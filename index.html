@@ -1,0 +1,3796 @@
+<!doctype html>
+<html lang="ro">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sistem Garanții Geeli</title>
+    <link
+      rel="icon"
+      type="image/png"
+      href="https://i.ibb.co/3DK9gMM/20260302-184545.png"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .tab-content {
+        display: none;
+      }
+
+      .tab-content.active {
+        display: block;
+      }
+
+      .a4-page {
+        width: 100%;
+        max-width: 210mm;
+        min-height: 297mm;
+        padding: 10mm;
+        margin: auto;
+        background: white;
+        color: black;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        position: relative;
+      }
+
+      #main-nav::-webkit-scrollbar {
+        height: 4px;
+      }
+
+      #main-nav::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+      }
+
+      @media print {
+        .no-print {
+          display: none !important;
+        }
+
+        body {
+          background: white !important;
+          margin: 0;
+          padding: 0;
+        }
+
+        #modal-view {
+          position: absolute;
+          top: 0;
+          left: 0;
+          background: white !important;
+          display: block !important;
+          overflow: visible !important;
+          width: 100%;
+        }
+
+        .a4-page {
+          box-shadow: none;
+          margin: 0;
+          border: none;
+          width: 210mm;
+          height: 296mm;
+          padding: 8mm !important;
+          overflow: hidden;
+        }
+
+        #app-section,
+        #auth-section {
+          display: none !important;
+        }
+
+        #v-render-area {
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .a4-page {
+          padding: 5mm;
+          min-height: auto;
+        }
+
+        h1 {
+          font-size: 1.25rem !important;
+        }
+
+        .mobile-grid-cols {
+          grid-template-columns: 1fr !important;
+        }
+      }
+    </style>
+  </head>
+
+  <body class="bg-slate-900 text-slate-100">
+    <div
+      id="auth-section"
+      class="min-h-screen flex items-center justify-center p-4 no-print"
+    >
+      <div
+        class="bg-white text-slate-900 p-6 md:p-8 rounded-2xl shadow-2xl w-full max-w-md border-t-8 border-blue-600"
+      >
+        <h2
+          class="text-2xl md:text-3xl font-black mb-6 text-center italic text-blue-600 tracking-tighter uppercase"
+        >
+          Geeli Service
+        </h2>
+
+        <div id="login-form" class="space-y-4">
+          <input
+            type="text"
+            id="l-user"
+            placeholder="Utilizator"
+            class="w-full p-3 border-2 border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-semibold"
+          />
+          <input
+            type="password"
+            id="l-pass"
+            placeholder="Parolă"
+            class="w-full p-3 border-2 border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-semibold"
+          />
+
+          <div class="flex items-center gap-2 px-1">
+            <input
+              type="checkbox"
+              id="l-remember"
+              class="w-5 h-5 cursor-pointer"
+            />
+            <label
+              for="l-remember"
+              class="text-sm font-bold text-slate-600 cursor-pointer select-none"
+              >Salvează parola</label
+            >
+          </div>
+
+          <button
+            onclick="handleLogin()"
+            class="w-full bg-blue-600 text-white p-4 rounded-xl font-black hover:bg-blue-700 transition tracking-wide active:scale-95"
+          >
+            CONECTARE
+          </button>
+          <div class="flex justify-between pt-2">
+            <button
+              onclick="showAuth('reg')"
+              class="text-blue-600 text-sm font-bold hover:underline"
+            >
+              Cont nou
+            </button>
+            <button
+              onclick="showAuth('reset')"
+              class="text-slate-500 text-sm font-bold hover:underline"
+            >
+              Resetare parolă
+            </button>
+          </div>
+        </div>
+
+        <div id="reset-form" class="hidden space-y-4">
+          <h3
+            class="text-center font-black text-slate-700 uppercase text-sm mb-2"
+          >
+            Schimbare Parolă
+          </h3>
+          <input
+            type="text"
+            id="reset-user"
+            placeholder="Utilizator"
+            class="w-full p-3 border-2 border-slate-300 rounded-lg font-semibold"
+          />
+          <input
+            type="password"
+            id="reset-old-pass"
+            placeholder="Parolă Veche"
+            class="w-full p-3 border-2 border-slate-300 rounded-lg font-semibold"
+          />
+          <input
+            type="password"
+            id="reset-new-pass"
+            placeholder="Parolă Nouă"
+            class="w-full p-3 border-2 border-slate-300 rounded-lg font-semibold"
+          />
+          <button
+            onclick="handleResetPassword()"
+            class="w-full bg-orange-600 text-white p-4 rounded-xl font-black uppercase hover:bg-orange-700 transition active:scale-95"
+          >
+            Actualizează Parola
+          </button>
+          <button
+            onclick="showAuth('login')"
+            class="w-full text-sm text-slate-500 font-bold mt-2"
+          >
+            Înapoi
+          </button>
+        </div>
+
+        <div id="reg-form" class="hidden space-y-3">
+          <input
+            type="text"
+            id="r-full"
+            placeholder="Nume Complet"
+            class="w-full p-3 border-2 border-slate-200 rounded-lg"
+          />
+          <input
+            type="text"
+            id="r-user"
+            placeholder="Username"
+            class="w-full p-3 border-2 border-slate-200 rounded-lg"
+          />
+          <input
+            type="password"
+            id="r-pass"
+            placeholder="Parolă"
+            class="w-full p-3 border-2 border-slate-200 rounded-lg"
+          />
+          <select
+            id="r-service"
+            class="w-full p-3 border-2 border-slate-200 rounded-lg font-bold bg-slate-50"
+          >
+            <option value="Propriu">1. Service Propriu</option>
+            <option value="SERVICE PROPRIU 1">2. SERVICE PROPRIU 1</option>
+            <option value="SERVICE PROPRIU 2">3. SERVICE PROPRIU 2</option>
+            <option value="RIDICARE">4. RIDICARE</option>
+            <option value="BUXI PROFESIONAL">5. BUXI PROFESIONAL</option>
+            <option value="MIXX MOTION">6. MIXX MOTION</option>
+            <option value="PGC GRAND TOTAL">7. PGC GRAND TOTAL</option>
+            <option value="TRANDAFIR GROSU PFA">8. TRANDAFIR GROSU PFA</option>
+            <option value="TRUST AGROSERV">9. TRUST AGROSERV</option>
+          </select>
+          <button
+            onclick="handleRegister()"
+            class="w-full bg-green-600 text-white p-4 rounded-xl font-black uppercase active:scale-95"
+          >
+            Creare Cont
+          </button>
+          <button
+            onclick="showAuth('login')"
+            class="w-full text-sm text-slate-500 font-bold mt-2"
+          >
+            Înapoi la logare
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="app-section"
+      class="hidden min-h-screen flex flex-col bg-slate-100 text-slate-900 no-print"
+    >
+      <nav
+        class="bg-slate-800 text-white p-0 flex justify-between items-center shadow-lg sticky top-0 z-40 h-12"
+      >
+        <img
+          src="https://i.ibb.co/6cM58dZH/20260302-184450.png"
+          alt="Logo"
+          class="h-8 md:h-12 object-contain ml-2"
+        />
+        <div class="flex items-center gap-3">
+          <div class="text-right leading-none flex flex-col justify-center">
+            <p
+              id="nav-user-name"
+              class="font-extrabold text-[10px] md:text-sm"
+            ></p>
+            <p
+              id="nav-user-info"
+              class="text-[8px] md:text-[10px] text-blue-400 font-black uppercase tracking-widest"
+            ></p>
+          </div>
+          <button
+            onclick="handleLogout()"
+            class="bg-red-600 hover:bg-red-700 px-3 py-2 rounded-lg font-black text-[10px] md:text-xs transition"
+          >
+            IEȘIRE
+          </button>
+        </div>
+      </nav>
+
+      <div
+        class="bg-white border-b-2 flex overflow-x-auto sticky top-12 z-30 shadow-sm no-scrollbar"
+        id="main-nav"
+      >
+        <button
+          onclick="switchTab('tab-list')"
+          id="btn-list"
+          class="flex-shrink-0 px-6 md:px-8 py-4 font-black border-b-4 border-blue-600 text-blue-600 text-sm md:text-base"
+        >
+          LISTĂ FIȘE
+        </button>
+        <button
+          onclick="switchTab('tab-add')"
+          id="btn-add"
+          class="hidden flex-shrink-0 px-6 md:px-8 py-4 font-black text-slate-500 hover:text-blue-600 transition text-sm md:text-base"
+        >
+          ADĂUGARE / EDITARE
+        </button>
+        <button
+          onclick="switchTab('tab-users')"
+          id="btn-users"
+          class="hidden flex-shrink-0 px-6 md:px-8 py-4 font-black text-slate-500 hover:text-blue-600 transition text-sm md:text-base uppercase"
+        >
+          Utilizatori
+        </button>
+      </div>
+
+      <main class="flex-grow p-3 md:p-8">
+        <div id="tab-list" class="tab-content active">
+          <div
+            id="admin-export-area"
+            class="hidden bg-white p-4 rounded-xl mb-6 border-2 border-blue-100 shadow-sm flex flex-col md:flex-row items-start md:items-center gap-4"
+          >
+            <div class="flex items-center gap-2 w-full md:w-auto">
+              <span class="text-[10px] font-black uppercase text-blue-700"
+                >Export Excel:</span
+              >
+              <select
+                id="export-type"
+                class="flex-grow md:flex-grow-0 p-2 border rounded font-bold text-xs bg-slate-50 outline-none"
+                onchange="toggleExportDates()"
+              >
+                <option value="all">Toate Fișele</option>
+                <option value="period">Perioadă Specifică</option>
+                <option value="current">Afișate acum (Filtrate)</option>
+              </select>
+            </div>
+            <div
+              id="export-dates"
+              class="hidden flex items-center gap-2 w-full md:w-auto"
+            >
+              <input
+                type="date"
+                id="exp-start"
+                class="flex-grow p-2 border rounded font-bold text-xs"
+              />
+              <span class="text-xs font-bold">-</span>
+              <input
+                type="date"
+                id="exp-end"
+                class="flex-grow p-2 border rounded font-bold text-xs"
+              />
+            </div>
+            <button
+              onclick="exportToExcel()"
+              class="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-black text-xs uppercase transition flex items-center justify-center gap-2 active:scale-95"
+            >
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="3"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                ></path>
+              </svg>
+              Export Excel
+            </button>
+            <div
+              id="archive-counter-container"
+              class="flex items-center gap-3 px-4 py-2 bg-slate-50 rounded-lg border border-slate-200 ml-auto"
+            >
+              <div class="flex flex-col items-center">
+                <span class="text-[9px] font-black uppercase text-slate-500"
+                  >Fișe arhivate</span
+                >
+                <span
+                  id="archive-count"
+                  class="text-sm font-black text-green-600 leading-none"
+                  >0</span
+                >
+              </div>
+              <button
+                onclick="openArchiveModal()"
+                class="bg-slate-800 text-white px-2 py-1 rounded text-[9px] font-black hover:bg-slate-700 transition uppercase"
+              >
+                Info
+              </button>
+            </div>
+          </div>
+
+          <div class="flex gap-2 mb-6 items-center">
+            <input
+              type="text"
+              id="search-box"
+              onkeyup="filterTable()"
+              placeholder="Caută după nume, VIN, telefon..."
+              class="flex-grow min-w-0 p-3 md:p-4 border-2 border-slate-300 rounded-xl shadow-sm outline-none font-semibold focus:border-blue-500 transition text-sm md:text-base"
+            />
+
+            <select
+              id="status-filter"
+              onchange="handleStatusChange()"
+              class="p-2 md:p-3 border-2 border-slate-200 rounded-lg font-bold text-xs md:text-sm bg-white text-slate-700 outline-none focus:border-blue-500 transition-all"
+            >
+              <option value="Toate">Toate Statusurile</option>
+              <option value="În lucru">În lucru</option>
+              <option value="Finalizat">Finalizat</option>
+              <option value="Revenire">Revenire</option>
+            </select>
+
+            <select
+              onchange="changePageSize(this.value)"
+              class="flex-shrink-0 w-20 md:w-auto p-2 md:p-4 border-2 border-slate-300 rounded-xl font-black text-xs md:text-sm bg-white outline-none focus:border-blue-500 transition no-print"
+            >
+              <option value="25">25 fișe/pag.</option>
+              <option value="50" selected>50 fișe/pag.</option>
+              <option value="75">75 fișe/pag.</option>
+              <option value="100">100 fișe/pag.</option>
+            </select>
+          </div>
+
+          <div
+            class="bg-white rounded-2xl shadow-xl overflow-x-auto border border-slate-200"
+          >
+            <table class="w-full text-left min-w-[700px]">
+              <thead
+                class="bg-slate-200 text-slate-800 uppercase text-[10px] font-black tracking-widest"
+              >
+                <tr id="table-head-row"></tr>
+              </thead>
+              <tbody
+                id="fise-rows"
+                class="divide-y divide-slate-200 hover:[&>tr]:bg-blue-50 cursor-pointer text-sm"
+              ></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="tab-users" class="tab-content max-w-6xl mx-auto">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-black text-slate-800 uppercase italic">
+              Utilizatori Sistem
+            </h2>
+            <button
+              onclick="openChangePinModal()"
+              class="flex items-center gap-2 bg-slate-700 hover:bg-slate-900 text-white px-3 py-2 rounded-lg font-black text-[10px] uppercase transition active:scale-95"
+            >
+              🔑 Modificare PIN
+            </button>
+          </div>
+          <div
+            class="bg-white rounded-2xl shadow-xl overflow-x-auto border border-slate-200"
+          >
+            <table class="w-full text-left min-w-[600px]">
+              <thead
+                class="bg-slate-800 text-white uppercase text-[10px] font-black tracking-widest"
+              >
+                <tr>
+                  <th class="p-4">Nume Prenume</th>
+                  <th class="p-4">Username</th>
+                  <th class="p-4">Service/Magazin</th>
+                  <th class="p-4">Rol</th>
+                  <th class="p-4 text-center">Acțiuni</th>
+                </tr>
+              </thead>
+              <tbody
+                id="users-rows"
+                class="divide-y divide-slate-200 text-sm"
+              ></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="tab-add" class="tab-content max-w-6xl mx-auto">
+          <div
+            id="edit-indicator"
+            class="hidden bg-amber-100 text-amber-900 p-3 rounded-lg mb-4 font-black text-center border-2 border-amber-400 uppercase text-[10px] md:text-xs"
+          >
+            Mod EDITARE activ: <span id="edit-id-display"></span>.
+            <button onclick="cancelEdit()" class="underline ml-4 text-red-700">
+              ANULEAZĂ
+            </button>
+          </div>
+          <form
+            id="form-fisa-noua"
+            class="bg-white p-5 md:p-8 rounded-2xl shadow-2xl grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 border border-slate-200"
+          >
+            <input type="hidden" id="edit-fisa-id" />
+
+            <div class="space-y-4">
+              <h3
+                class="font-black text-blue-700 border-b-2 border-blue-100 pb-2 uppercase text-[10px] italic tracking-wider"
+              >
+                1. Date Client
+              </h3>
+              <div>
+                <label
+                  class="text-[9px] font-black text-slate-800 uppercase ml-1"
+                  >Nume Prenume</label
+                >
+                <input
+                  type="text"
+                  id="c-nume"
+                  placeholder="Nume Prenume"
+                  class="w-full p-3 border-2 border-slate-200 rounded-lg font-semibold text-sm"
+                  required
+                />
+              </div>
+              <div>
+                <label
+                  class="text-[9px] font-black text-slate-800 uppercase ml-1"
+                  >Număr telefon</label
+                >
+                <input
+                  type="text"
+                  id="c-tel"
+                  placeholder="Nr. Telefon"
+                  class="w-full p-3 border-2 border-slate-200 rounded-lg font-semibold text-sm"
+                />
+              </div>
+              <div>
+                <label
+                  class="text-[9px] font-black text-slate-800 uppercase ml-1"
+                  >E-mail</label
+                >
+                <input
+                  type="email"
+                  id="c-email"
+                  placeholder="Email"
+                  class="w-full p-3 border-2 border-slate-200 rounded-lg font-semibold text-sm"
+                />
+              </div>
+              <div>
+                <label
+                  class="text-[9px] font-black text-slate-800 uppercase ml-1"
+                  >Adresa domiciliu</label
+                >
+                <input
+                  type="text"
+                  id="c-adr"
+                  placeholder="Adresa domiciliu"
+                  class="w-full p-3 border-2 border-slate-200 rounded-lg font-semibold text-sm"
+                />
+              </div>
+              <div>
+                <label
+                  class="text-[9px] font-black text-slate-800 uppercase ml-1"
+                  >Județ</label
+                >
+                <select
+                  id="c-judet"
+                  class="w-full p-3 border-2 border-slate-200 rounded-lg font-semibold text-sm bg-white"
+                >
+                  <option value="">Selectează Județ</option>
+                  <option value="Alba">Alba</option>
+                  <option value="Arad">Arad</option>
+                  <option value="Arges">Argeș</option>
+                  <option value="Bacau">Bacău</option>
+                  <option value="Bihor">Bihor</option>
+                  <option value="Bistrita-Nasaud">Bistrița-Năsăud</option>
+                  <option value="Botosani">Botoșani</option>
+                  <option value="Brasov">Brașov</option>
+                  <option value="Braila">Brăila</option>
+                  <option value="Bucuresti">București</option>
+                  <option value="Buzau">Buzău</option>
+                  <option value="Caras-Severin">Caraș-Severin</option>
+                  <option value="Calarasi">Călărași</option>
+                  <option value="Cluj">Cluj</option>
+                  <option value="Constanta">Constanța</option>
+                  <option value="Covasna">Covasna</option>
+                  <option value="Dambovita">Dâmbovița</option>
+                  <option value="Dolj">Dolj</option>
+                  <option value="Galati">Galați</option>
+                  <option value="Giurgiu">Giurgiu</option>
+                  <option value="Gorj">Gorj</option>
+                  <option value="Harghita">Harghita</option>
+                  <option value="Hunedoara">Hunedoara</option>
+                  <option value="Ialomita">Ialomița</option>
+                  <option value="Iasi">Iași</option>
+                  <option value="Ilfov">Ilfov</option>
+                  <option value="Maramures">Maramureș</option>
+                  <option value="Mehedinti">Mehedinți</option>
+                  <option value="Mures">Mureș</option>
+                  <option value="Neamt">Neamț</option>
+                  <option value="Olt">Olt</option>
+                  <option value="Prahova">Prahova</option>
+                  <option value="Satu Mare">Satu Mare</option>
+                  <option value="Salaj">Sălaj</option>
+                  <option value="Sibiu">Sibiu</option>
+                  <option value="Suceava">Suceava</option>
+                  <option value="Teleorman">Teleorman</option>
+                  <option value="Timis">Timiș</option>
+                  <option value="Tulcea">Tulcea</option>
+                  <option value="Vaslui">Vaslui</option>
+                  <option value="Valcea">Vâlcea</option>
+                  <option value="Vrancea">Vrancea</option>
+                </select>
+              </div>
+              <div>
+                <label
+                  class="text-[9px] font-black text-slate-800 uppercase ml-1"
+                  >Data Înregistrare</label
+                >
+                <input
+                  type="datetime-local"
+                  id="c-data-auto"
+                  class="w-full p-3 border-2 border-slate-200 rounded-lg bg-slate-50 font-bold text-sm"
+                />
+              </div>
+            </div>
+
+            <div class="space-y-4">
+              <h3
+                class="font-black text-blue-700 border-b-2 border-blue-100 pb-2 uppercase text-[10px] italic tracking-wider"
+              >
+                2. Date Produs
+              </h3>
+              <div class="space-y-2">
+                <div>
+                  <label
+                    class="text-[9px] font-black text-slate-800 uppercase ml-1"
+                    >Categorie Produs</label
+                  >
+                  <select
+                    id="p-cat"
+                    onchange="updateModelOptions()"
+                    class="w-full p-3 border-2 border-slate-200 rounded-lg text-sm font-black bg-slate-50"
+                  >
+                    <option value="" disabled selected>Selectați...</option>
+                    <option value="Bicicleta electrica">
+                      Bicicletă Electrică
+                    </option>
+                    <option value="Tricicleta electrica">
+                      Tricicletă Electrică
+                    </option>
+                    <option value="Scuter electric">Scuter Electric</option>
+                    <option value="Cvadraciclu electric">
+                      Cvadraciclu Electric
+                    </option>
+                    <option value="Alta">Alta (Specificați mai jos)</option>
+                  </select>
+                  <input
+                    type="text"
+                    id="p-cat-alt"
+                    placeholder="Introduceți categoria..."
+                    class="hidden mt-2 w-full p-3 border-2 border-blue-400 rounded-lg font-bold bg-blue-50 text-blue-900 text-sm"
+                  />
+                </div>
+                <div>
+                  <label
+                    class="text-[9px] font-black text-slate-800 uppercase ml-1"
+                    >Serie VIN</label
+                  >
+                  <div class="flex items-center gap-2">
+                    <input
+                      type="text"
+                      id="p-vin"
+                      placeholder="Serie VIN"
+                      class="flex-1 min-w-0 p-3 border-2 border-slate-200 rounded-lg font-mono font-black uppercase text-blue-800 text-sm"
+                    />
+                    <button
+                      type="button"
+                      onclick="checkVin()"
+                      title="Verifică VIN în baza de date"
+                      class="flex-shrink-0 p-3 bg-slate-700 hover:bg-blue-700 text-white rounded-lg transition active:scale-95"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        fill="white"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"
+                        />
+                      </svg>
+                    </button>
+                    <span
+                      id="vin-status-icon"
+                      class="flex-shrink-0 text-xl leading-none"
+                      style="min-width: 24px; text-align: center"
+                    ></span>
+                  </div>
+                  <div
+                    id="vin-status-msg"
+                    class="hidden mt-1 text-[11px] font-black rounded px-2 py-1"
+                  ></div>
+                </div>
+                <div id="p-mod-container">
+                  <label
+                    class="text-[9px] font-black text-slate-800 uppercase ml-1"
+                    >Marcă / Model</label
+                  >
+                  <div id="p-mod-wrapper">
+                    <input
+                      type="text"
+                      id="p-mod"
+                      placeholder="Marcă / Model"
+                      class="w-full p-3 border-2 border-slate-200 rounded-lg font-semibold text-sm"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label
+                    class="text-[9px] font-black text-slate-800 uppercase ml-1"
+                    >Emitent Factură</label
+                  >
+                  <select
+                    id="p-emitent"
+                    onchange="toggleEmitentAlt()"
+                    class="w-full p-3 border-2 border-slate-200 rounded-lg text-xs font-bold bg-white"
+                  >
+                    <option value="" disabled selected>
+                      Selectați emitentul...
+                    </option>
+                    <option value="ANY-STEF IMPEX S.R.L.">
+                      1. ANY-STEF IMPEX S.R.L.
+                    </option>
+                    <option value="ARTEMIS S.R.L.">2. ARTEMIS S.R.L.</option>
+                    <option value="AUTO NICO-SIMO S.R.L.">
+                      3. AUTO NICO-SIMO S.R.L.
+                    </option>
+                    <option value="AUTO TUNNING S.R.L.">
+                      4. AUTO TUNNING S.R.L.
+                    </option>
+                    <option value="BIO-NIRA S.R.L.">5. BIO-NIRA S.R.L.</option>
+                    <option value="MAGAZIN BUXI PROFESIONAL S.R.L.">
+                      6. MAGAZIN BUXI PROFESIONAL S.R.L.
+                    </option>
+                    <option value="ECOTWIN BUSINESS S.R.L.">
+                      7. ECOTWIN BUSINESS S.R.L.
+                    </option>
+                    <option value="ESPERANZA RECYCLING S.R.L.">
+                      8. ESPERANZA RECYCLING S.R.L.
+                    </option>
+                    <option value="EURODINAMIC S.R.L.">
+                      9. EURODINAMIC S.R.L.
+                    </option>
+                    <option value="GIRFLEX S.R.L.">10. GIRFLEX S.R.L.</option>
+                    <option value="GREEN ELECTRIC CENTER S.R.L.">
+                      11. GREEN ELECTRIC CENTER S.R.L.
+                    </option>
+                    <option value="MARELVI IMPEX S.R.L.">
+                      12. MARELVI IMPEX S.R.L.
+                    </option>
+                    <option value="SHOP MIXX MOTION S.R.L.">
+                      13. SHOP MIXX MOTION S.R.L.
+                    </option>
+                    <option value="TOMAS BICICLETE SHOP S.R.L.">
+                      14. TOMAS BICICLETE SHOP S.R.L.
+                    </option>
+                    <option value="Alta">Alta</option>
+                  </select>
+                  <input
+                    type="text"
+                    id="p-emitent-alt"
+                    placeholder="Introduceți emitentul..."
+                    class="hidden mt-2 w-full p-3 border-2 border-blue-400 rounded-lg font-bold bg-blue-50 text-blue-900 text-xs"
+                  />
+                </div>
+                <div class="flex flex-col sm:flex-row gap-2">
+                  <div>
+                    <label
+                      class="text-[9px] font-black text-slate-800 uppercase ml-1"
+                      >Nr. Factură / Data Fact.</label
+                    >
+                    <input
+                      type="text"
+                      id="p-fact"
+                      placeholder="Nr. Factură"
+                      class="w-full sm:w-[99%] p-3 border-2 border-slate-200 rounded-lg text-xs font-bold"
+                    />
+                  </div>
+                  <input
+                    type="date"
+                    id="p-dfact"
+                    class="w-full sm:w-[45%] p-3 border-2 border-slate-200 rounded-lg text-xs font-bold"
+                  />
+                </div>
+                <div>
+                  <label
+                    class="text-[9px] font-black text-slate-800 uppercase ml-1"
+                    >Adaugă / Vezi Factură</label
+                  >
+                  <div class="flex items-center gap-2 mt-1">
+                    <input
+                      type="file"
+                      id="factura-file-input"
+                      accept="image/*,application/pdf"
+                      class="hidden"
+                      onchange="handleFacturaFileSelected()"
+                    />
+                    <button
+                      type="button"
+                      id="factura-upload-btn"
+                      onclick="
+                        document.getElementById('factura-file-input').click()
+                      "
+                      title="Adaugă factură (imagine sau PDF)"
+                      class="flex items-center justify-center gap-1 bg-slate-600 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded-md font-semibold text-xs transition active:scale-95"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="13"
+                        height="13"
+                        fill="white"
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+                      </svg>
+                      Adaugă
+                    </button>
+                    <button
+                      type="button"
+                      id="factura-view-btn"
+                      onclick="viewFactura()"
+                      title="Vizualizează factura salvată"
+                      class="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-md font-semibold text-xs transition active:scale-95 bg-slate-200 text-slate-400 cursor-not-allowed"
+                      disabled
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="13"
+                        height="13"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path
+                          d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zm0 12.5c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"
+                        />
+                      </svg>
+                      Vezi
+                    </button>
+                    <button
+                      type="button"
+                      id="factura-delete-btn"
+                      onclick="deleteFactura()"
+                      title="Șterge factura atașată"
+                      class="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-md font-semibold text-xs transition active:scale-95 bg-slate-200 text-slate-400 cursor-not-allowed"
+                      disabled
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="13"
+                        height="13"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path
+                          d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
+                        />
+                      </svg>
+                      Șterge
+                    </button>
+                    <span
+                      id="factura-status-text"
+                      class="text-[10px] font-black text-slate-400 italic"
+                    ></span>
+                  </div>
+                  <div id="factura-upload-progress" class="hidden mt-2">
+                    <div class="w-full bg-slate-200 rounded-full h-1.5">
+                      <div
+                        id="factura-progress-bar"
+                        class="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
+                        style="width: 0%"
+                      ></div>
+                    </div>
+                    <p
+                      class="text-[9px] font-black text-blue-700 mt-1 uppercase tracking-wider"
+                    >
+                      Se încarcă...
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <label
+                    class="text-[9px] font-black text-slate-800 uppercase ml-1"
+                    >KM. Parcurși la Data Sesizării</label
+                  >
+                  <input
+                    type="number"
+                    id="p-km-sesizare"
+                    placeholder="KM la data sesizării"
+                    min="0"
+                    required
+                    class="w-full p-3 border-2 border-slate-200 rounded-lg text-sm font-bold"
+                  />
+                </div>
+                <div>
+                  <label
+                    class="text-[9px] font-black text-slate-800 uppercase ml-1"
+                    >Stare</label
+                  >
+                  <select
+                    id="p-gar"
+                    class="w-full p-3 border-2 border-slate-200 rounded-lg text-sm font-bold"
+                  >
+                    <option value="In garantie">În Garanție</option>
+                    <option value="Post garantie">Post Garanție</option>
+                  </select>
+                </div>
+                <div>
+                  <label
+                    class="text-[9px] font-black text-slate-800 uppercase ml-1"
+                    >Observații</label
+                  >
+                  <input
+                    type="text"
+                    id="p-obs-produs"
+                    placeholder="Observații (Accesorii, starea etc.)"
+                    class="w-full p-3 border-2 border-slate-200 rounded-lg text-xs font-semibold"
+                  />
+                </div>
+                <div>
+                  <label
+                    class="text-[9px] font-black text-slate-800 uppercase ml-1"
+                    >Data Predării Fizice</label
+                  >
+                  <input
+                    type="date"
+                    id="p-dprel"
+                    class="w-full p-3 border-2 border-slate-200 rounded-lg text-sm font-bold"
+                  />
+                </div>
+              </div>
+            </div>
+            <div class="space-y-4">
+              <h3
+                class="font-black text-blue-700 border-b-2 border-blue-100 pb-2 uppercase text-[10px] italic tracking-wider"
+              >
+                3. Reclamație Client
+              </h3>
+              <textarea
+                id="p-rec"
+                placeholder="Introduceți defectele sesizate..."
+                class="w-full p-3 border-2 border-slate-200 rounded-lg h-32 md:h-48 outline-none font-semibold focus:border-blue-500 text-sm"
+                required
+              ></textarea>
+              <button
+                type="submit"
+                id="submit-btn"
+                class="w-full bg-blue-600 text-white p-4 md:p-5 rounded-2xl font-black text-base md:text-lg hover:bg-blue-700 uppercase shadow-lg transition active:scale-95"
+              >
+                Salvează Fișa
+              </button>
+            </div>
+          </form>
+        </div>
+      </main>
+    </div>
+
+    <div
+      id="modal-view"
+      class="fixed inset-0 bg-black/90 hidden z-50 overflow-y-auto p-2 md:p-4"
+    >
+      <div
+        class="max-w-[210mm] mx-auto mb-4 flex flex-wrap gap-2 justify-between items-center bg-slate-800 p-3 rounded-xl no-print"
+      >
+        <div class="flex flex-wrap gap-2">
+          <button
+            onclick="window.print()"
+            class="bg-blue-600 text-white px-4 md:px-6 py-2 rounded-lg font-black text-[10px] uppercase shadow-xl hover:bg-blue-500 active:scale-95"
+          >
+            PRINT / PDF
+          </button>
+          <button
+            id="admin-edit-btn"
+            onclick="startEdit()"
+            class="hidden bg-amber-500 text-white px-3 md:px-4 py-2 rounded-lg font-black text-[10px] uppercase active:scale-95"
+          >
+            Editează
+          </button>
+          <button
+            id="admin-delete-btn"
+            onclick="deleteFisa()"
+            class="hidden bg-red-600 text-white px-3 md:px-4 py-2 rounded-lg font-black text-[10px] uppercase active:scale-95"
+          >
+            Șterge
+          </button>
+        </div>
+        <button
+          onclick="closeModal()"
+          class="bg-slate-700 text-white px-4 py-2 rounded-lg font-black text-[10px] uppercase"
+        >
+          Închide
+        </button>
+      </div>
+      <div id="a4-content" class="a4-page rounded-sm overflow-hidden">
+        <div id="v-render-area" class="h-full flex flex-col"></div>
+      </div>
+    </div>
+
+    <script>
+      const SUPA_URL = "https://chsuqecaqhnjqmmuwfhl.supabase.co";
+      const SUPA_KEY =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNoc3VxZWNhcWhuanFtbXV3ZmhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0NDQ4NDMsImV4cCI6MjA4ODAyMDg0M30.CRMlqol-pl3DSBSBvpm04PLkSjE9lja3c1JnKnLrWvs";
+      const _supa = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+      let activeUser = null;
+      let currentFisa = null;
+
+      function getRoTime() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, "0");
+        const day = String(now.getDate()).padStart(2, "0");
+        const hours = String(now.getHours()).padStart(2, "0");
+        const minutes = String(now.getMinutes()).padStart(2, "0");
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+      }
+      function formatRelativ(dateStr) {
+        if (!dateStr) return "Recent";
+        const dataModificarii = new Date(dateStr);
+        const acum = new Date();
+        const difSecunde = Math.floor((acum - dataModificarii) / 1000);
+
+        if (difSecunde < 60) return "Chiar acum";
+        const minute = Math.floor(difSecunde / 60);
+        if (minute < 60) return `Acum ${minute}m`;
+        const ore = Math.floor(minute / 60);
+        if (ore < 24) return `Acum ${ore}h`;
+
+        return dataModificarii.toLocaleDateString("ro-RO", {
+          day: "2-digit",
+          month: "2-digit",
+        });
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        const saved = localStorage.getItem("geeli_session");
+        if (saved) {
+          const creds = JSON.parse(saved);
+          handleLogin(creds.u, creds.p);
+        }
+      });
+
+      function showAuth(type) {
+        document
+          .getElementById("login-form")
+          .classList.toggle("hidden", type !== "login");
+        document
+          .getElementById("reg-form")
+          .classList.toggle("hidden", type !== "reg");
+        document
+          .getElementById("reset-form")
+          .classList.toggle("hidden", type !== "reset");
+      }
+
+      async function handleLogin(storedU = null, storedP = null) {
+        const u = (storedU || document.getElementById("l-user").value).trim();
+        const p = (storedP || document.getElementById("l-pass").value).trim();
+        const remember = document.getElementById("l-remember").checked;
+        if (!u || !p) return;
+        const { data } = await _supa
+          .from("profiles")
+          .select("*")
+          .ilike("username", u)
+          .eq("password", p)
+          .maybeSingle();
+        if (data) {
+          activeUser = data;
+          if (remember)
+            localStorage.setItem("geeli_session", JSON.stringify({ u, p }));
+          document.getElementById("auth-section").classList.add("hidden");
+          document.getElementById("app-section").classList.remove("hidden");
+          document.getElementById("nav-user-name").innerText =
+            data.nume_complet;
+          document.getElementById("nav-user-info").innerText =
+            `${data.rol} | ${data.service}`;
+          if (data.rol === "admin") {
+            document.getElementById("btn-add").classList.remove("hidden");
+            document.getElementById("btn-users").classList.remove("hidden");
+            document
+              .getElementById("admin-export-area")
+              .classList.remove("hidden");
+            _loadCfg();
+          }
+          document.getElementById("c-data-auto").value = getRoTime();
+          const hRow = document.getElementById("table-head-row");
+
+          hRow.innerHTML =
+            (activeUser.rol === "admin" || activeUser.rol === "user"
+              ? '<th class="p-4 border-r border-slate-400">#</th>'
+              : "") +
+            `
+    <th class="p-4 border-r border-slate-400">ID Fișă</th>
+    <th class="p-4 border-r border-slate-400">Client / Telefon / Județ</th>
+    <th class="p-4 border-r border-slate-400">Produs / VIN</th>` +
+            (activeUser.rol === "admin"
+              ? '<th class="p-4 border-r border-slate-400 text-center">Factură</th>'
+              : "") +
+            (activeUser.rol === "admin" || activeUser.rol === "user"
+              ? '<th class="p-4 border-r border-slate-400 text-center">Imagini</th>'
+              : "") +
+            `<th class="p-4 border-r border-slate-400 text-slate-900">Actualizat</th>
+    <th class="p-4 border-r border-slate-400">Vechime</th>
+    <th class="p-4 border-r border-slate-400">Status</th>
+    <th class="p-4 border-r border-slate-400">Service</th>` +
+            (activeUser.rol === "admin"
+              ? '<th class="p-4 border-r border-slate-400">Magazin</th>'
+              : "") +
+            (activeUser.rol === "admin" || activeUser.service === "RIDICARE"
+              ? '<th class="p-4">Transport</th>'
+              : "");
+
+          loadFise();
+        } else {
+          if (!storedU) alert("Date incorecte!");
+          else localStorage.removeItem("geeli_session");
+        }
+      }
+      async function handleResetPassword() {
+        const u = document.getElementById("reset-user").value.trim();
+        const oldP = document.getElementById("reset-old-pass").value.trim();
+        const newP = document.getElementById("reset-new-pass").value.trim();
+        if (!u || !oldP || !newP) return alert("Completați toate datele!");
+        const { data: profile } = await _supa
+          .from("profiles")
+          .select("id")
+          .ilike("username", u)
+          .eq("password", oldP)
+          .maybeSingle();
+        if (profile) {
+          await _supa
+            .from("profiles")
+            .update({ password: newP })
+            .eq("id", profile.id);
+          alert("Parola a fost actualizată!");
+          showAuth("login");
+        } else alert("Utilizator sau parolă incorectă!");
+      }
+
+      function handleLogout() {
+        localStorage.removeItem("geeli_session");
+        location.reload();
+      }
+
+      async function handleRegister() {
+        const nume = document.getElementById("r-full").value.trim();
+        const user = document.getElementById("r-user").value.trim();
+        const pass = document.getElementById("r-pass").value.trim();
+        const serv = document.getElementById("r-service").value;
+        if (!nume || !user || !pass)
+          return alert("Toate câmpurile sunt obligatorii!");
+        const profile = {
+          nume_complet: nume,
+          username: user,
+          password: pass,
+          service: serv,
+          rol: user.toLowerCase().includes("admin") ? "admin" : "none",
+        };
+        const { error } = await _supa.from("profiles").insert([profile]);
+        if (error) alert("Eroare: " + error.message);
+        else {
+          alert("Cont creat! Așteptați activarea.");
+          showAuth("login");
+        }
+      }
+
+      async function loadUsers() {
+        if (activeUser.rol !== "admin") return;
+        const { data } = await _supa
+          .from("profiles")
+          .select("*")
+          .order("nume_complet");
+        const body = document.getElementById("users-rows");
+        const rows = (data || []).map(
+          (u) => `<tr class="border-b border-slate-100 hover:bg-slate-50">
+                    <td class="p-4 font-black text-slate-900">${u.nume_complet}</td>
+                    <td class="p-4 font-mono font-bold text-blue-600">${u.username}</td>
+                    <td class="p-4 text-xs font-bold text-slate-700">${u.service}</td>
+                    <td class="p-4">
+                        <span class="px-2 py-1 rounded text-[9px] font-black uppercase text-white 
+                        ${u.rol === "admin" ? "bg-red-600" : u.rol === "user" ? "bg-green-600" : "bg-slate-500"}">
+                        ${u.rol || "none"}
+                        </span>
+                    </td>
+                    <td class="p-4 text-center flex gap-2 justify-center">
+                        ${
+                          u.username !== activeUser.username
+                            ? `
+                            <button onclick="toggleUserRole('${u.id}', '${u.rol}')" class="bg-blue-100 text-blue-600 px-2 py-1 rounded font-black text-[9px]">⇄ROL</button>
+                            <button onclick="deleteUser('${u.username}')" class="bg-red-100 text-red-600 px-2 py-1 rounded font-black text-[9px]">ȘTERGE</button>
+                        `
+                            : '<span class="text-[9px] italic text-slate-400">Activ</span>'
+                        }
+                    </td>
+                </tr>`,
+        );
+        body.innerHTML = rows.join("");
+      }
+
+      async function toggleUserRole(id, currentRole) {
+        let newRole =
+          currentRole === "none" || !currentRole
+            ? "user"
+            : currentRole === "user"
+              ? "admin"
+              : "none";
+        if (confirm(`Schimbi accesul în: ${newRole.toUpperCase()}?`)) {
+          await _supa.from("profiles").update({ rol: newRole }).eq("id", id);
+          loadUsers();
+        }
+      }
+
+      async function deleteUser(username) {
+        if (confirm(`Ștergi utilizatorul "${username}"?`)) {
+          await _supa.from("profiles").delete().eq("username", username);
+          loadUsers();
+        }
+      }
+
+      let ITEMS_PER_PAGE = 50;
+      let currentPage = 1;
+      let totalFiseCount = 0;
+      let totalFilteredCount = 0;
+      let currentSearchQuery = "";
+      let currentStatusFilter = "Toate";
+      let _searchDebounceTimer = null;
+      function changePageSize(val) {
+        ITEMS_PER_PAGE = parseInt(val);
+        loadFise(1);
+      }
+
+      function buildRow(f, globalNrCrt) {
+        const vch = calcVechime(f);
+        const transportStyle =
+          f.tip_transport === "INTRARE"
+            ? "text-red-600"
+            : f.tip_transport === "IESIRE"
+              ? "text-green-600"
+              : "";
+        const transportHtml =
+          activeUser.rol === "admin" || activeUser.service === "RIDICARE"
+            ? `<td class="p-4 font-black text-[10px] ${transportStyle}">${f.tip_transport || ""}</td>`
+            : "";
+        return `<tr onclick='if(!event.target.closest(".log-btn") && !event.target.closest(".factura-btn") && !event.target.closest(".imagini-btn")) openFisa(${JSON.stringify(f)})' class="border-b border-slate-300 hover:bg-slate-50 cursor-pointer transition-colors">
+        ${activeUser.rol === "admin" || activeUser.rol === "user" ? `<td class="p-4 border-r border-slate-300 font-black text-slate-400 text-xs whitespace-nowrap">${globalNrCrt}${!f.data_preluare_fizica ? `<sup style="display:inline-block;width:7px;height:7px;background:#ef4444;border-radius:50%;margin-left:3px;vertical-align:super;line-height:1;" title="Lipsă Data Predării Fizice"></sup>` : ""}</td>` : ""}
+
+    <td class="p-4 border-r border-slate-300 font-mono font-black text-blue-700 text-xs">
+        ${f.id}
+        ${
+          activeUser.rol === "admin"
+            ? `<button
+            onclick="event.stopPropagation(); openLogModal('${f.id}')"
+            class="log-btn inline-block ml-1 align-middle bg-slate-200 hover:bg-slate-300 text-slate-700 font-black text-[8px] px-1.5 py-0.5 rounded transition-colors uppercase leading-none"
+            title="Istoric acțiuni fișă">LOG</button>`
+            : ""
+        }
+    </td>
+<td class="p-4 border-r border-slate-300 font-black text-slate-900">
+    ${f.nume_client}<br>
+    <span class="text-blue-600 font-black uppercase text-[10px] inline-flex items-center gap-1">
+        ${f.tel_client || ""}
+        
+        ${
+          f.tel_client
+            ? `
+            <a href="https://wa.me/4${f.tel_client.replace(/\s+/g, "")}" 
+               target="_blank" 
+               onclick="event.stopPropagation();" 
+               class="inline-block transform hover:scale-110 transition-transform" 
+               title="Contactează pe WhatsApp">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="#25D366">
+                    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.438 9.889-9.886.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.98zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.668.149-.198.297-.767.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+                </svg>
+            </a>
+        `
+            : ""
+        }
+
+        ${f.judet_client ? " | " + f.judet_client : ""}
+    </span>
+</td>
+    <td class="p-4 border-r border-slate-300 text-xs font-bold text-slate-800" data-vin="${f.vin_produs}">
+        ${f.marca_model}<br>
+        <span class="text-blue-600 font-black uppercase text-[10px]">${f.vin_produs}</span>
+        <span class="vin-check-icon ml-1 text-xs"></span>
+    </td>
+    ${
+      activeUser.rol === "admin"
+        ? `<td class="p-2 border-r border-slate-300 text-center align-middle" onclick="event.stopPropagation()">
+        <div class="flex items-center justify-center gap-1">
+            <button
+                type="button"
+                class="factura-btn flex items-center justify-center bg-slate-600 hover:bg-blue-700 text-white rounded-lg transition active:scale-95"
+                style="width:28px;height:28px;padding:0;flex-shrink:0;"
+                title="Adaugă / Înlocuiește factură"
+                onclick="event.stopPropagation(); triggerFacturaUploadRow('${f.id}', this)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="white" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            </button>
+            <button
+                type="button"
+                class="factura-btn flex items-center justify-center rounded-lg transition active:scale-95 ${f.factura_path ? "bg-slate-600 hover:bg-blue-700 text-white cursor-pointer" : "bg-slate-200 text-slate-400 cursor-not-allowed"}"
+                style="width:28px;height:28px;padding:0;flex-shrink:0;"
+                title="${f.factura_path ? "Vizualizează factura" : "Nicio factură atașată"}"
+                ${f.factura_path ? `onclick="event.stopPropagation(); viewFacturaRow('${f.factura_path}')"` : 'disabled onclick="event.stopPropagation()"'}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zm0 12.5c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+            </button>
+            <button
+                type="button"
+                class="factura-btn flex items-center justify-center rounded-lg transition active:scale-95 ${f.factura_path ? "bg-red-600 hover:bg-red-700 text-white cursor-pointer" : "bg-slate-200 text-slate-400 cursor-not-allowed"}"
+                style="width:28px;height:28px;padding:0;flex-shrink:0;"
+                title="${f.factura_path ? "Șterge factura" : "Nicio factură atașată"}"
+                ${f.factura_path ? `onclick="event.stopPropagation(); deleteFacturaRow('${f.id}', '${f.factura_path}', this)"` : 'disabled onclick="event.stopPropagation()"'}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+            </button>
+            <input type="file" accept="image/*,application/pdf" class="hidden factura-row-input" onchange="handleFacturaRowUpload(event, '${f.id}', this)">
+        </div>
+    </td>`
+        : ""
+    }
+    ${
+      activeUser.rol === "admin" || activeUser.rol === "user"
+        ? `<td class="p-2 border-r border-slate-300 text-center align-middle" onclick="event.stopPropagation()">
+        <div class="flex items-center justify-center gap-1">
+            ${
+              activeUser.rol === "admin" || f.status !== "Finalizat"
+                ? `<button
+                type="button"
+                class="imagini-btn flex items-center justify-center bg-slate-600 hover:bg-blue-700 text-white rounded-lg transition active:scale-95"
+                style="width:28px;height:28px;padding:0;flex-shrink:0;"
+                title="Adaugă imagini"
+                onclick="triggerImaginiUpload('${f.id}', this)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="white" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            </button>`
+                : `<button type="button" disabled
+                class="imagini-btn flex items-center justify-center bg-slate-200 text-slate-400 cursor-not-allowed rounded-lg"
+                style="width:28px;height:28px;padding:0;flex-shrink:0;"
+                title="Fișa finalizată — adăugare blocată">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            </button>`
+            }
+            ${
+              activeUser.rol === "admin" || f.status !== "Finalizat"
+                ? `<button
+                type="button"
+                class="imagini-btn flex items-center justify-center rounded-lg transition active:scale-95 ${f.imagini_count > 0 ? "bg-slate-900 hover:bg-slate-700 text-white cursor-pointer" : "bg-slate-600 hover:bg-blue-700 text-white cursor-pointer"}"
+                style="width:28px;height:28px;padding:0;flex-shrink:0;"
+                title="${f.imagini_count > 0 ? `Vezi imagini (${f.imagini_count})` : "Vezi imagini"}"
+                onclick="openImaginiModal('${f.id}')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+            </button>`
+                : `<button type="button" disabled
+                class="imagini-btn flex items-center justify-center bg-slate-200 text-slate-400 cursor-not-allowed rounded-lg"
+                style="width:28px;height:28px;padding:0;flex-shrink:0;"
+                title="Fișa finalizată — vizualizare blocată">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+            </button>`
+            }
+            <input type="file" accept="image/*" multiple class="hidden imagini-row-input" onchange="handleImaginiUpload(event, '${f.id}', this)">
+        </div>
+    </td>`
+        : ""
+    }
+    <td class="p-2 md:p-4 border-r border-slate-300 whitespace-nowrap">
+    <span class="text-[8px] md:text-[9px] font-bold text-blue-900 bg-slate-200 px-1 py-1 rounded-md border border-slate-300 uppercase">
+        ${formatRelativ(f.updated_at)}
+    </span>
+</td>
+    <td class="p-4 border-r border-slate-300 text-[10px] font-black text-center ${vch.color}">
+    ${vch.text}
+    <br>
+    <span class="text-blue-600 uppercase font-black" style="font-size: 8px; display: block; margin-top: 2px;">
+        ${f.tip_garantie || ""}
+    </span>
+</td>
+    <td class="p-2 md:p-4 border-r border-slate-300 whitespace-nowrap">
+    <span class="px-1.5 py-1 rounded-full text-[8px] md:text-[9px] font-black uppercase text-white
+    ${f.status === "Finalizat" ? "bg-green-600" : f.status === "Revenire" ? "bg-blue-600" : "bg-amber-500"}">
+        ${f.status}
+    </span>
+</td>
+    <td class="p-4 border-r border-slate-300 text-[9px] font-black text-slate-700 italic">${f.alocat_catre}</td>
+    ${activeUser.rol === "admin" ? `<td class="p-4 border-r border-slate-300 text-[9px] font-black text-slate-600">${f.magazin || ""}</td>` : ""}
+    ${transportHtml} </tr>`;
+      }
+
+      function renderPagination(current, total, totalItems, totalDb) {
+        let container = document.getElementById("pagination-bar");
+        if (!container) {
+          const tableWrapper = document.querySelector(
+            ".bg-white.rounded-2xl.shadow-xl.overflow-x-auto",
+          );
+          container = document.createElement("div");
+          container.id = "pagination-bar";
+          tableWrapper.after(container);
+        }
+
+        if (total <= 1 && totalItems <= ITEMS_PER_PAGE) {
+          container.innerHTML = "";
+          return;
+        }
+
+        const start = (current - 1) * ITEMS_PER_PAGE + 1;
+        const end = Math.min(current * ITEMS_PER_PAGE, totalItems);
+
+        let pages = [];
+        if (total <= 7) {
+          for (let i = 1; i <= total; i++) pages.push(i);
+        } else {
+          pages.push(1);
+          if (current > 3) pages.push("...");
+          for (
+            let i = Math.max(2, current - 1);
+            i <= Math.min(total - 1, current + 1);
+            i++
+          )
+            pages.push(i);
+          if (current < total - 2) pages.push("...");
+          pages.push(total);
+        }
+
+        const filterInfo =
+          totalItems < totalDb
+            ? ` &nbsp;<span class="text-blue-600">(filtrate din ${totalDb} total)</span>`
+            : "";
+
+        container.className =
+          "flex flex-wrap items-center justify-between gap-3 mt-4 px-2 py-3 no-print";
+        container.innerHTML = `
+                <span class="text-xs font-bold text-slate-500">
+                    Afișate <b>${start}–${end}</b> din <b>${totalItems}</b> fișe${filterInfo} &nbsp;|&nbsp; Pagina <b>${current}</b> din <b>${total}</b>
+                </span>
+                <div class="flex flex-wrap gap-1">
+                    <button onclick="loadFise(${current - 1})" ${current === 1 ? "disabled" : ""}
+                        class="px-3 py-1.5 rounded-lg text-xs font-black border-2 ${current === 1 ? "border-slate-200 text-slate-300 cursor-not-allowed" : "border-slate-300 text-slate-600 hover:bg-slate-100 transition"}">
+                        ← Prev
+                    </button>
+                    ${pages
+                      .map((p) =>
+                        p === "..."
+                          ? `<span class="px-2 py-1.5 text-xs text-slate-400 font-bold self-center">…</span>`
+                          : `<button onclick="loadFise(${p})"
+                            class="px-3 py-1.5 rounded-lg text-xs font-black border-2 transition ${
+                              p === current
+                                ? "bg-blue-600 border-blue-600 text-white shadow"
+                                : "border-slate-300 text-slate-600 hover:bg-blue-50 hover:border-blue-300"
+                            }">${p}</button>`,
+                      )
+                      .join("")}
+                    <button onclick="loadFise(${current + 1})" ${current === total ? "disabled" : ""}
+                        class="px-3 py-1.5 rounded-lg text-xs font-black border-2 ${current === total ? "border-slate-200 text-slate-300 cursor-not-allowed" : "border-slate-300 text-slate-600 hover:bg-slate-100 transition"}">
+                        Next →
+                    </button>
+                </div>`;
+      }
+
+      function handleStatusChange() {
+        const statusValue = document.getElementById("status-filter").value;
+        currentStatusFilter = statusValue;
+        currentPage = 1;
+        loadFise(1);
+      }
+
+      function buildBaseQuery(forCount = false) {
+        const q = currentSearchQuery.trim().toLowerCase();
+
+        let query = _supa
+          .from("fise_cu_vechime")
+          .select(forCount ? "*" : "*", { count: "exact", head: forCount })
+          .eq("is_deleted", false);
+
+        if (activeUser.rol !== "admin") {
+          query = query.eq("alocat_catre", activeUser.service);
+        }
+
+        if (currentStatusFilter !== "Toate") {
+          query = query.eq("status", currentStatusFilter);
+        }
+
+        if (q) {
+          query = query.or(
+            [
+              `nume_client.ilike.%${q}%`,
+              `vin_produs.ilike.%${q}%`,
+              `tel_client.ilike.%${q}%`,
+              `marca_model.ilike.%${q}%`,
+              `id.ilike.%${q}%`,
+              `judet_client.ilike.%${q}%`,
+              `email_client.ilike.%${q}%`,
+              `status.ilike.%${q}%`,
+              `alocat_catre.ilike.%${q}%`,
+              `tip_transport.ilike.%${q}%`,
+              `vechime_status.ilike.%${q}%`,
+              `magazin.ilike.%${q}%`,
+              `tip_garantie.ilike.%${q}%`,
+              `zile_vechime_text.ilike.%${q}%`,
+            ].join(","),
+          );
+        }
+
+        return query;
+      }
+
+      async function loadFise(page = 1) {
+        if (activeUser.rol === "none") {
+          document.getElementById("fise-rows").innerHTML =
+            '<tr><td colspan="9" class="p-10 text-center font-black text-red-600 uppercase">Cont neactivat.</td></tr>';
+          return;
+        }
+
+        document.getElementById("fise-rows").innerHTML =
+          '<tr><td colspan="10" class="p-10 text-center font-black text-slate-400 italic">Se încarcă...</td></tr>';
+
+        currentPage = page;
+        updateArchiveCounter();
+
+        if (activeUser.rol === "admin") {
+          let totalQ = _supa
+            .from("fise")
+            .select("*", { count: "exact", head: true })
+            .eq("is_deleted", false);
+          const { count: dbCount } = await totalQ;
+          totalFiseCount = dbCount || 0;
+        }
+
+        const { count: filteredCount } = await buildBaseQuery(true);
+        totalFilteredCount = filteredCount || 0;
+
+        const totalPages = Math.max(
+          1,
+          Math.ceil(totalFilteredCount / ITEMS_PER_PAGE),
+        );
+        if (page > totalPages) page = currentPage = totalPages;
+
+        const offset = (page - 1) * ITEMS_PER_PAGE;
+
+        const { data, error } = await buildBaseQuery(false)
+          .order("updated_at", { ascending: false })
+          .range(offset, offset + ITEMS_PER_PAGE - 1);
+
+        if (error) {
+          console.error("Eroare loadFise:", error);
+          return;
+        }
+
+        const body = document.getElementById("fise-rows");
+        body.innerHTML = "";
+
+        if (!data || data.length === 0) {
+          body.innerHTML =
+            '<tr><td colspan="10" class="p-10 text-center font-black text-slate-400 italic">Nu există fișe.</td></tr>';
+          renderPagination(1, 1, 0, totalFiseCount);
+          return;
+        }
+
+        body.innerHTML = data
+          .map((f, i) => {
+            const globalNrCrt = totalFilteredCount - offset - i;
+            return buildRow(f, globalNrCrt);
+          })
+          .join("");
+
+        renderPagination(page, totalPages, totalFilteredCount, totalFiseCount);
+        checkVinList(data);
+      }
+
+      async function checkVinList(fise) {
+        const vins = fise
+          .map((f) => f.vin_produs)
+          .filter((v) => v && v.trim() !== "")
+          .map((v) => v.trim().toUpperCase());
+        if (vins.length === 0) return;
+
+        const { data, error } = await _supa
+          .from("serie_vin_db")
+          .select("serie_vin_db")
+          .in("serie_vin_db", vins);
+
+        if (error) return;
+
+        const gasite = new Set(
+          (data || []).map((r) => r.serie_vin_db.trim().toUpperCase()),
+        );
+
+        document.querySelectorAll("td[data-vin]").forEach((td) => {
+          const vin = (td.getAttribute("data-vin") || "").trim().toUpperCase();
+          if (!vin) return;
+          const icon = td.querySelector(".vin-check-icon");
+          if (!icon) return;
+          if (gasite.has(vin)) {
+            icon.textContent = "✔️";
+            icon.title = "VIN verificat — găsit în baza de date";
+          } else {
+            icon.textContent = "❌";
+            icon.title = "VIN verificat — negăsit în baza de date";
+          }
+        });
+      }
+
+      function calcVechime(fisa) {
+        if (!fisa || !fisa.data_preluare_fizica) {
+          return { text: "-", color: "text-slate-400" };
+        }
+
+        const dataStart = new Date(fisa.data_preluare_fizica);
+        let dataReferinta;
+
+        if (fisa.data_finalizare) {
+          dataReferinta = new Date(fisa.data_finalizare);
+        } else {
+          dataReferinta = new Date();
+        }
+
+        const diffTime = dataReferinta - dataStart;
+        let diffZile = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffZile < 0) diffZile = 0;
+
+        const esteDepasit = diffZile > 14;
+
+        return {
+          text: esteDepasit
+            ? `${diffZile} ZILE (DEPĂȘIT)`
+            : `${diffZile} ZILE (OK)`,
+          color: esteDepasit ? "text-red-700" : "text-green-700",
+        };
+      }
+
+      function toggleAltCategorie() {
+        const sel = document.getElementById("p-cat").value;
+        const inputAlt = document.getElementById("p-cat-alt");
+        if (sel === "Alta") {
+          inputAlt.classList.remove("hidden");
+          inputAlt.required = true;
+        } else {
+          inputAlt.classList.add("hidden");
+          inputAlt.required = false;
+          inputAlt.value = "";
+        }
+      }
+
+      async function checkVin() {
+        const raw = document.getElementById("p-vin").value;
+        const vin = raw.replace(/[\s\u00A0\u200B\t]+/g, "").trim();
+        const icon = document.getElementById("vin-status-icon");
+        const msg = document.getElementById("vin-status-msg");
+
+        if (!vin) {
+          msg.textContent = "Introduceți o serie VIN!";
+          msg.className =
+            "mt-1 text-[11px] font-black rounded px-2 py-1 bg-amber-100 text-amber-800";
+          msg.classList.remove("hidden");
+          setTimeout(() => msg.classList.add("hidden"), 3000);
+          return;
+        }
+
+        const { data: rows, error } = await _supa
+          .from("serie_vin_db")
+          .select("serie_vin_db")
+          .ilike("serie_vin_db", vin)
+          .limit(1);
+        const data = rows && rows.length > 0 ? rows[0] : null;
+
+        if (error) {
+          msg.textContent = "Eroare la verificare: " + error.message;
+          msg.className =
+            "mt-1 text-[11px] font-black rounded px-2 py-1 bg-red-100 text-red-800";
+          msg.classList.remove("hidden");
+          setTimeout(() => msg.classList.add("hidden"), 3000);
+          return;
+        }
+
+        const rezultat = !!data;
+
+        if (rezultat) {
+          icon.textContent = "✔️";
+          msg.textContent = "VIN găsit în baza de date ✓";
+          msg.className =
+            "mt-1 text-[11px] font-black rounded px-2 py-1 bg-green-100 text-green-800";
+        } else {
+          icon.textContent = "❌";
+          msg.textContent = "VIN negăsit: \u201E" + vin + "\u201D";
+          msg.className =
+            "mt-1 text-[11px] font-black rounded px-2 py-1 bg-red-100 text-red-800";
+        }
+
+        // Actualizare iconița din lista de fișe dacă suntem în modul editare
+        const editId = document.getElementById("edit-fisa-id").value;
+        if (editId) {
+          const tdList =
+            document.querySelector("td[data-vin='" + vin + "']") ||
+            document.querySelector("td[data-vin='" + vin.toLowerCase() + "']");
+          if (tdList) {
+            const iconList = tdList.querySelector(".vin-check-icon");
+            if (iconList) {
+              iconList.textContent = rezultat ? "✔️" : "❌";
+              iconList.title = rezultat
+                ? "VIN verificat — găsit în baza de date"
+                : "VIN verificat — negăsit în baza de date";
+            }
+          }
+        }
+
+        msg.classList.remove("hidden");
+        setTimeout(() => msg.classList.add("hidden"), 5000);
+      }
+
+      function toggleEmitentAlt() {
+        const sel = document.getElementById("p-emitent").value;
+        const inputAlt = document.getElementById("p-emitent-alt");
+        if (sel === "Alta") {
+          inputAlt.classList.remove("hidden");
+          inputAlt.required = true;
+        } else {
+          inputAlt.classList.add("hidden");
+          inputAlt.required = false;
+          inputAlt.value = "";
+        }
+      }
+
+      document.getElementById("form-fisa-noua").onsubmit = async (e) => {
+        e.preventDefault();
+        const editId = document.getElementById("edit-fisa-id").value;
+        let finalCategorie = document.getElementById("p-cat").value;
+        if (finalCategorie === "Alta")
+          finalCategorie = document.getElementById("p-cat-alt").value;
+
+        let finalEmitent = document.getElementById("p-emitent").value;
+        if (finalEmitent === "Alta")
+          finalEmitent = document.getElementById("p-emitent-alt").value;
+
+        const fisa = {
+          nume_client: document.getElementById("c-nume").value,
+          tel_client: document.getElementById("c-tel").value || "",
+          email_client: document.getElementById("c-email").value || "",
+          adresa_client: document.getElementById("c-adr").value || "",
+          judet_client: document.getElementById("c-judet").value || "",
+          created_at: document.getElementById("c-data-auto").value,
+          categorie: finalCategorie,
+          vin_produs: document.getElementById("p-vin").value || "",
+          marca_model: document.getElementById("p-mod").value || "",
+          nr_factura: document.getElementById("p-fact").value || "",
+          data_factura: document.getElementById("p-dfact").value || null,
+          tip_garantie: document.getElementById("p-gar").value,
+          obs_produs: document.getElementById("p-obs-produs").value || "",
+          data_preluare_fizica:
+            document.getElementById("p-dprel").value || null,
+          km_la_sesizare:
+            document.getElementById("p-km-sesizare").value !== ""
+              ? parseInt(document.getElementById("p-km-sesizare").value)
+              : null,
+          reclamatie_client: document.getElementById("p-rec").value || "",
+          magazin: finalEmitent || "",
+        };
+
+        let result;
+
+        if (editId) {
+          result = await _supa.from("fise").update(fisa).eq("id", editId);
+        } else {
+          const dateStr = new Date()
+            .toISOString()
+            .slice(2, 10)
+            .replace(/-/g, "");
+          fisa.id =
+            dateStr +
+            Math.floor(Math.random() * 100)
+              .toString()
+              .padStart(3, "0");
+          fisa.status = "În lucru";
+          fisa.alocat_catre = "Nealocat";
+          result = await _supa.from("fise").insert([fisa]);
+        }
+
+        if (result.error) {
+          alert("Eroare la salvare: " + result.error.message);
+        } else {
+          // Înregistrare log acțiune
+          await _supa.from("fise_log").insert([
+            {
+              fisa_id: editId || fisa.id,
+              actiune: editId ? "editat" : "creat",
+              data_ora: new Date().toISOString(),
+              user_username: activeUser.username,
+              user_nume: activeUser.nume_complet,
+            },
+          ]);
+
+          alert("Fișa a fost salvată cu succes!");
+
+          cancelEdit();
+          loadFise();
+          switchTab("tab-list");
+          document.getElementById("form-fisa-noua").reset();
+        }
+      };
+
+      function startEdit() {
+        const f = currentFisa;
+        document.getElementById("edit-fisa-id").value = f.id;
+        document.getElementById("edit-id-display").innerText = f.id;
+        document.getElementById("edit-indicator").classList.remove("hidden");
+        document.getElementById("submit-btn").innerText = "Actualizează Fișa";
+        document.getElementById("c-nume").value = f.nume_client;
+        document.getElementById("c-tel").value = f.tel_client || "";
+        document.getElementById("c-email").value = f.email_client || "";
+        document.getElementById("c-adr").value = f.adresa_client || "";
+        document.getElementById("c-judet").value = f.judet_client || "";
+        document.getElementById("c-data-auto").value = f.created_at?.slice(
+          0,
+          16,
+        );
+        const categoriiStandard = Array.from(
+          document.getElementById("p-cat").options,
+        )
+          .map((o) => o.value)
+          .filter((v) => v && v !== "Alta");
+        if (categoriiStandard.includes(f.categorie)) {
+          document.getElementById("p-cat").value = f.categorie;
+          document.getElementById("p-cat-alt").classList.add("hidden");
+        } else {
+          document.getElementById("p-cat").value = "Alta";
+          document.getElementById("p-cat-alt").classList.remove("hidden");
+          document.getElementById("p-cat-alt").value = f.categorie;
+        }
+        document.getElementById("p-vin").value = f.vin_produs;
+        document.getElementById("vin-status-icon").textContent = "";
+        document.getElementById("vin-status-msg").classList.add("hidden");
+        document.getElementById("p-mod").value = f.marca_model;
+        document.getElementById("p-fact").value = f.nr_factura || "";
+        document.getElementById("p-dfact").value = f.data_factura || "";
+        document.getElementById("p-gar").value = f.tip_garantie;
+        document.getElementById("p-obs-produs").value = f.obs_produs || "";
+        document.getElementById("p-dprel").value = f.data_preluare_fizica || "";
+        document.getElementById("p-km-sesizare").value =
+          f.km_la_sesizare != null ? f.km_la_sesizare : "";
+        document.getElementById("p-rec").value = f.reclamatie_client;
+        // Populare stare factură
+        refreshFacturaUI(f.factura_path || null);
+        // Populare câmp Emitent Factură
+        const emitentiStandard = Array.from(
+          document.getElementById("p-emitent").options,
+        )
+          .map((o) => o.value)
+          .filter((v) => v && v !== "Alta");
+        if (!f.magazin || f.magazin === "") {
+          document.getElementById("p-emitent").value = "";
+          document.getElementById("p-emitent-alt").classList.add("hidden");
+          document.getElementById("p-emitent-alt").value = "";
+        } else if (emitentiStandard.includes(f.magazin)) {
+          document.getElementById("p-emitent").value = f.magazin;
+          document.getElementById("p-emitent-alt").classList.add("hidden");
+          document.getElementById("p-emitent-alt").value = "";
+        } else {
+          document.getElementById("p-emitent").value = "Alta";
+          document.getElementById("p-emitent-alt").classList.remove("hidden");
+          document.getElementById("p-emitent-alt").value = f.magazin;
+        }
+        closeModal();
+        switchTab("tab-add");
+      }
+
+      function cancelEdit() {
+        document.getElementById("form-fisa-noua").reset();
+        document.getElementById("edit-fisa-id").value = "";
+        document.getElementById("edit-indicator").classList.add("hidden");
+        document.getElementById("p-cat-alt").classList.add("hidden");
+        document.getElementById("p-emitent-alt").classList.add("hidden");
+        document.getElementById("submit-btn").innerText = "Salvează Fișa";
+        document.getElementById("c-data-auto").value = getRoTime();
+        document.getElementById("p-cat").value = "";
+        document.getElementById("vin-status-icon").textContent = "";
+        document.getElementById("vin-status-msg").classList.add("hidden");
+        resetFacturaUI();
+        renderModelInput();
+      }
+
+      async function deleteFisa() {
+        if (
+          confirm(
+            `Sigur doriți să mutați fișa ${currentFisa.id} în arhiva de ștergeri?`,
+          )
+        ) {
+          const { error } = await _supa
+            .from("fise")
+            .update({
+              is_deleted: true,
+              deleted_at: new Date().toISOString(),
+              deleted_by_username: activeUser.username,
+              deleted_by_name: activeUser.nume_complet,
+            })
+            .eq("id", currentFisa.id);
+
+          if (error) {
+            alert("Eroare la ștergere: " + error.message);
+          } else {
+            alert("Fișa a fost arhivată cu succes.");
+            closeModal();
+            loadFise();
+          }
+        }
+      }
+
+      function openFisa(f) {
+        currentFisa = f;
+        document.getElementById("modal-view").classList.remove("hidden");
+        document
+          .getElementById("admin-edit-btn")
+          .classList.toggle("hidden", activeUser.rol !== "admin");
+        document
+          .getElementById("admin-delete-btn")
+          .classList.toggle("hidden", activeUser.rol !== "admin");
+        const vch = calcVechime(f);
+        const canEditReport =
+          activeUser.rol === "admin" ||
+          (activeUser.service === f.alocat_catre && f.status === "În lucru");
+        const isPropriuType =
+          f.alocat_catre === "Propriu" ||
+          f.alocat_catre === "SERVICE PROPRIU 1" ||
+          f.alocat_catre === "SERVICE PROPRIU 2" ||
+          f.alocat_catre === "RIDICARE";
+
+        document.getElementById("v-render-area").innerHTML = `
+                <div class="flex-grow">
+                    <div class="mb-1 -mt-4"><img src="https://i.ibb.co/DfD2pcmk/20260302-184328.png" alt="Antet" class="max-w-[150px] md:max-w-[180px] h-auto object-contain"></div>
+                    <div class="flex justify-between border-b-4 md:border-b-8 border-slate-900 pb-4 md:pb-6 mb-2">
+                        <div><h1 class="text-xl md:text-2xl font-black italic uppercase text-slate-900">Fișă Service</h1><p class="font-mono text-sm md:text-lg text-blue-700 font-black">#${f.id}</p></div>
+                        <div class="text-right">
+                            <p class="font-black px-4 py-1 md:px-6 md:py-2 rounded text-white uppercase mb-1 text-[10px] md:text-sm shadow-md ${f.status === "Finalizat" ? "bg-green-600" : f.status === "Revenire" ? "bg-blue-600" : "bg-amber-500"}">${f.status}</p>
+                            <p class="text-[9px] md:text-[11px] font-black ${vch.color}">${vch.text}</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-10 text-[11px] md:text-[13px] mb-6">
+                        <div class="space-y-1 md:space-y-2">
+                            <h4 class="font-black border-b-2 border-slate-900 text-slate-900 uppercase text-[9px] md:text-[11px] pb-1 tracking-widest">1. Date Client</h4>
+                            <p><b>NUME:</b> ${f.nume_client}</p>
+                            <p><b>TEL:</b> ${f.tel_client || "-"}</p>
+                            <p><b>EMAIL:</b> ${f.email_client || "-"}</p>
+                            <p><b>ADRESA:</b> ${f.adresa_client || "-"}</p>
+                            <p><b>JUDEȚ:</b> ${f.judet_client || "-"}</p>
+                            <p><b>DATA ÎNREG.:</b> ${
+                              f.created_at
+                                ? (() => {
+                                    const parts = f.created_at
+                                      .substring(0, 10)
+                                      .split("-"); // [AAAA, LL, ZZ]
+                                    const time = f.created_at.substring(11, 19); // HH:MM:SS
+                                    return `${parts[2]}-${parts[1]}-${parts[0]} ${time}`;
+                                  })()
+                                : "-"
+                            }</p>
+                        </div>
+                        <div class="space-y-1 md:space-y-2">
+                            <h4 class="font-black border-b-2 border-slate-900 text-slate-900 uppercase text-[9px] md:text-[11px] pb-1 tracking-widest">2. Date Produs</h4>
+                            <p><b>CATEGORIE:</b> ${f.categorie}</p>
+                            <p><b>MODEL:</b> ${f.marca_model}</p>
+                            <p><b>VIN:</b> <span class="text-blue-700 font-black uppercase font-mono">${f.vin_produs}</span></p>
+                            <p><b class="font-black">EMITENT FACTURĂ:</b> ${f.magazin || "-"}</p>
+                            <p><b class="font-black">NR. FACTURĂ:</b> ${f.nr_factura || "-"} / ${f.data_factura ? f.data_factura.split("-").reverse().join("-") : "-"}</p>
+                            <p><b class="font-black">KM. LA DATA SESIZARII:</b> ${f.km_la_sesizare != null ? f.km_la_sesizare + " km" : "-"}</p>
+                            <p><b>GARANȚIE:</b> ${f.tip_garantie}</p>
+                            <p><b class="font-black">OBSERVAȚII:</b> ${f.obs_produs || "-"}</p>
+                            <p><b class="font-black text-red-700">DATA PREDĂRII FIZICE:</b> ${f.data_preluare_fizica ? f.data_preluare_fizica.split("-").reverse().join("-") : "-"}</p>
+                        </div>
+                    </div>
+                    <div class="bg-slate-100 p-2 md:p-3 border-2 border-slate-200 italic mb-3 text-[11px] md:text-[13px] text-slate-900 rounded-lg">
+                        <h4 class="font-black uppercase text-[9px] md:text-[11px] mb-2 border-b-2 border-slate-300 pb-1">3. Reclamație Client:</h4>
+                        <div class="font-bold leading-relaxed whitespace-pre-wrap">${f.reclamatie_client}</div>
+                    </div>
+                    <div class="border-t-2 md:border-t-4 border-slate-900 pt-4 md:pt-6">
+    <h4 class="font-black bg-slate-900 text-white px-3 py-1 text-[9px] md:text-[11px] inline-block mb-1 uppercase tracking-widest">Raport Tehnic Service</h4>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-2 md:gap-6 text-[10px] md:text-[12px] font-black mb-4 border-b pb-2 border-slate-100">
+        <p>ALOCAT: <span class="text-blue-700">${f.alocat_catre}</span></p>
+        <p>TEHNICIAN: <span class="text-blue-700">${f.tehnician || "-"}</span></p>
+        <p>KM/ORE: <span class="text-blue-700">${f.km || "-"}/${f.ore || "-"}</span></p>
+        <p>COST: <span class="text-blue-700">${f.cost || "-"}</span></p>
+        <p>FACTURĂ: <span class="text-blue-700">${f.emitent_factura_service || "-"}</span></p>
+    </div>
+                <div class="p-2 md:p-4 border-2 border-slate-100 bg-blue-50/30 text-[11px] md:text-[13px] font-bold text-slate-900 min-h-[40px] whitespace-pre-line rounded-xl">${f.raport_reparatie ? f.raport_reparatie.trim() : "Diagnosticare în curs..."}</div>
+                    </div>
+                </div>
+                <div class="mt-4 flex justify-between px-4 md:px-10 text-[9px] md:text-[11px] font-black uppercase text-slate-900">
+    <div class="flex flex-col">
+        <p class="mb-3 italic">Semnătură Client</p>
+        <p class="italic pl-16 text-slate-900">...................</p>
+    </div>
+
+    <div class="flex flex-col">
+        <p class="mb-3 italic">Reprezentant Service</p>
+        <p class="italic pl-20 text-slate-900">...................</p>
+    </div>
+</div>
+               <div class="mt-auto pt-4 text-[11px] leading-tight text-black italic border-t border-slate-100">
+    <p class="mb-2">
+        În conformitate cu O.G. 21/1992 republicată și OUG 140/2021, unitatea noastră garantează lucrările de reparații executate, după cum urmează:
+    </p>
+    <ul class="list-disc pl-5 space-y-1">
+        <li>
+            3 luni de la data recepției vehiculului, dacă lucrarea de reparații nu a necesitat înlocuiri de piese
+        </li>
+        <li>
+            6 luni pentru manoperă și 12 luni pentru piesele furnizate de unitate
+        </li>
+    </ul>
+</div>
+ <div class="mt-auto pt-4 text-[11px] leading-tight text-slate-400 italic border-t border-slate-100">
+    <p class="mb-2">Notă: Datele cu caracter personal din acest document sunt prelucrate în conformitate cu prevederile Regulamentului (UE) 2016/679 (GDPR). Prin semnarea/transmiterea acestui document, vă exprimați acordul pentru prelucrarea datelor în scopul prestării serviciilor</p>
+                <div class="mt-8 no-print pt-4 border-t-2 border-dashed border-slate-300 space-y-4">
+                  ${
+                    activeUser.rol === "admin"
+                      ? `
+    <div class="bg-slate-200 p-4 rounded-xl flex flex-col gap-3 shadow-inner">
+        <span class="text-[10px] font-black uppercase text-slate-800">Alocare, Status & Transport (ADMIN):</span>
+        <div class="flex flex-wrap gap-2">
+            <select id="sel-aloca" class="flex-grow p-2 border-2 border-slate-300 rounded-lg font-black text-[10px] bg-white text-slate-900">
+                <option value="${f.alocat_catre}">${f.alocat_catre}</option>
+                <option value="Propriu">1. Service Propriu</option>
+                <option value="SERVICE PROPRIU 1">2. SERVICE PROPRIU 1</option>
+                <option value="SERVICE PROPRIU 2">3. SERVICE PROPRIU 2</option>
+                <option value="RIDICARE">4. RIDICARE</option>
+                <option value="BUXI PROFESIONAL">5. BUXI PROFESIONAL</option>
+                <option value="MIXX MOTION">6. MIXX MOTION</option>
+                <option value="PGC GRAND TOTAL">7. PGC GRAND TOTAL</option>
+                <option value="TRANDAFIR GROSU PFA">8. TRANDAFIR GROSU PFA</option>
+                <option value="TRUST AGROSERV">9. TRUST AGROSERV</option>
+            </select>
+            
+           <select id="sel-status-admin" class="p-2 border-2 border-slate-300 rounded-lg font-black text-[10px] bg-white text-slate-900">
+    <option value="În lucru" ${f.status === "În lucru" ? "selected" : ""}>În lucru</option>
+    <option value="Finalizat" ${f.status === "Finalizat" ? "selected" : ""}>Finalizat</option>
+    <option value="Revenire" ${f.status === "Revenire" ? "selected" : ""}>Revenire</option>
+</select>
+
+            <select id="sel-transport-admin" class="p-2 border-2 border-slate-300 rounded-lg font-black text-[10px] bg-white text-slate-900">
+                <option value="">Fără Transport</option>
+                <option value="INTRARE" ${f.tip_transport === "INTRARE" ? "selected" : ""}>INTRARE</option>
+                <option value="IESIRE" ${f.tip_transport === "IESIRE" ? "selected" : ""}>IEȘIRE</option>
+            </select>
+        </div>
+        <div class="flex justify-center w-full mt-4">
+            <button onclick="saveAlocare()" class="px-8 bg-blue-600 text-white py-3 rounded-lg font-black text-[10px] uppercase active:scale-95">
+                Actualizează
+            </button>
+        </div>
+    </div>`
+                      : ""
+                  }
+                    ${
+                      canEditReport
+                        ? `
+                        <div class="bg-blue-700 p-4 md:p-8 rounded-2xl text-white shadow-2xl">
+                            <h4 class="font-black uppercase mb-4 italic text-sm md:text-lg">Raport Tehnic - ${activeUser.rol === "admin" ? "MOD ADMIN" : "MOD SERVICE"}</h4>
+                           <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-4 text-slate-900">
+                            ${
+                              activeUser.service === "RIDICARE" ||
+                              activeUser.rol === "admin"
+                                ? `
+    <div> 
+        <label class="text-[9px] font-black text-white uppercase ml-1">Tip Transport</label>
+        <select id="s-transport" class="w-full p-3 rounded-lg text-xs font-bold border-2 text-slate-900">
+            <option value="">Nespecificat</option>
+            <option value="INTRARE" ${f.tip_transport === "INTRARE" ? "selected" : ""}>INTRARE (ROȘU)</option>
+            <option value="IESIRE" ${f.tip_transport === "IESIRE" ? "selected" : ""}>IESIRE (VERDE)</option>
+        </select>
+    </div>
+`
+                                : ""
+                            }
+    <div> 
+        <label class="text-[9px] font-black text-white uppercase ml-1">Tehnician</label>
+        <input type="text" id="s-teh" value="${f.tehnician || ""}" placeholder="Tehnician" class="w-full p-3 rounded-lg text-xs font-bold border-2">
+    </div>
+
+    <div> 
+        <label class="text-[9px] font-black text-white uppercase ml-1">Km.</label>
+        <input type="text" id="s-km" value="${f.km || ""}" placeholder="Km" class="w-full p-3 rounded-lg text-xs font-bold border-2">
+    </div>
+    <div> 
+        <label class="text-[9px] font-black text-white uppercase ml-1">Ore</label>
+        <input type="text" id="s-ore" value="${f.ore || ""}" placeholder="Ore" class="w-full p-3 rounded-lg text-xs font-bold border-2">
+    </div>
+    <div> 
+        <label class="text-[9px] font-black text-white uppercase ml-1">Cost</label>
+        <input type="text" id="s-cost" value="${f.cost || ""}" placeholder="Cost" class="w-full p-3 rounded-lg text-xs font-bold border-2">
+    </div>
+    <div> 
+        <label class="text-[9px] font-black text-white uppercase ml-1">Factura</label> 
+        <input type="text" id="s-emi" value="${f.emitent_factura_service || ""}" placeholder="Factura" class="w-full p-3 rounded-lg text-xs font-bold border-2">
+    </div>
+    </div>
+   <div class="col-span-1 sm:col-span-2 md:col-span-full"> 
+    <label class="text-[9px] font-black text-white uppercase ml-1">Raport Reparații / Observații</label>
+    <textarea id="s-rap" placeholder="Descrieți lucrarea..." 
+              class="w-full p-3 rounded-xl text-slate-900 text-xs font-bold mb-4 h-24 border-2">${f.raport_reparatie || ""}</textarea>
+</div>                       
+          <div class="flex flex-col md:flex-row gap-2">
+                                <button onclick="saveRaport(false)" class="bg-slate-800 py-3 md:py-4 rounded-xl font-black uppercase text-[10px] flex-grow">Salvează Ciornă</button>
+                                <button onclick="saveRaport(true)" class="bg-green-500 py-3 md:py-4 rounded-xl font-black uppercase text-[10px] flex-grow shadow-lg active:scale-95">Finalizează Lucrarea</button>
+                            </div>
+                        </div>`
+                        : ""
+                    }
+                </div>`;
+      }
+
+      async function saveAlocare() {
+        const dest = document.getElementById("sel-aloca").value;
+        const stat = document.getElementById("sel-status-admin").value;
+        const trans = document.getElementById("sel-transport-admin").value;
+
+        const esteStatusFinal = stat === "Finalizat" || stat === "Refuzat";
+
+        const updateData = {
+          alocat_catre: dest,
+          status: stat,
+          tip_transport: trans,
+          updated_at: new Date().toISOString(),
+
+          data_finalizare: esteStatusFinal ? new Date().toISOString() : null,
+        };
+
+        const { error } = await _supa
+          .from("fise")
+          .update(updateData)
+          .eq("id", currentFisa.id);
+
+        if (!error) {
+          closeModal();
+          await loadFise();
+        } else {
+          console.error("Eroare la actualizarea alocării:", error);
+          alert("A apărut o eroare la salvarea modificărilor.");
+        }
+      }
+
+      async function saveRaport(isFinal) {
+        if (!isFinal) {
+          const confirmare = confirm("Sigur dorești să salvezi modificările?");
+          if (!confirmare) {
+            return;
+          }
+        }
+
+        const noulStatus = isFinal ? "Finalizat" : "În lucru";
+
+        const upd = {
+          tehnician: document.getElementById("s-teh").value,
+          raport_reparatie: document.getElementById("s-rap").value,
+          status: noulStatus,
+          data_finalizare: isFinal ? new Date().toISOString() : null,
+        };
+
+        if (document.getElementById("s-transport")) {
+          upd.tip_transport = document.getElementById("s-transport").value;
+        }
+
+        if (document.getElementById("s-km"))
+          upd.km = document.getElementById("s-km").value;
+        if (document.getElementById("s-ore"))
+          upd.ore = document.getElementById("s-ore").value;
+        if (document.getElementById("s-cost"))
+          upd.cost = document.getElementById("s-cost").value;
+        if (document.getElementById("s-emi"))
+          upd.emitent_factura_service = document.getElementById("s-emi").value;
+
+        const { error } = await _supa
+          .from("fise")
+          .update(upd)
+          .eq("id", currentFisa.id);
+
+        if (error) {
+          console.error("Eroare la salvarea raportului:", error);
+          alert("Eroare la salvare!");
+        } else {
+          closeModal();
+          loadFise();
+        }
+      }
+
+      function switchTab(id) {
+        document
+          .querySelectorAll(".tab-content")
+          .forEach((t) => t.classList.remove("active"));
+        document.getElementById(id).classList.add("active");
+        document
+          .querySelectorAll("#main-nav button")
+          .forEach((b) =>
+            b.classList.remove(
+              "border-b-4",
+              "border-blue-600",
+              "text-blue-600",
+            ),
+          );
+
+        let btnId =
+          id === "tab-add"
+            ? "btn-add"
+            : id === "tab-users"
+              ? "btn-users"
+              : "btn-list";
+
+        if (id === "tab-add") {
+          const editId = document.getElementById("edit-fisa-id").value;
+          if (!editId) {
+            cancelEdit();
+          }
+          document.getElementById("c-data-auto").value = getRoTime();
+        }
+
+        if (id === "tab-users") {
+          if (!pinUnlocked) {
+            // anulăm schimbarea de tab și afișăm modalul PIN
+            document
+              .querySelectorAll(".tab-content")
+              .forEach((t) => t.classList.remove("active"));
+            document.getElementById("tab-list").classList.add("active");
+            document
+              .querySelectorAll("#main-nav button")
+              .forEach((b) =>
+                b.classList.remove(
+                  "border-b-4",
+                  "border-blue-600",
+                  "text-blue-600",
+                ),
+              );
+            document
+              .getElementById("btn-list")
+              .classList.add("border-b-4", "border-blue-600", "text-blue-600");
+            document.getElementById("modal-pin").style.display = "flex";
+            setTimeout(() => document.getElementById("pin-input").focus(), 50);
+            return;
+          }
+          loadUsers();
+        }
+        document
+          .getElementById(btnId)
+          .classList.add("border-b-4", "border-blue-600", "text-blue-600");
+        window.scrollTo(0, 0);
+      }
+
+      let _cfg = { k: null };
+      let pinUnlocked = false;
+
+      async function _loadCfg() {
+        const { data } = await _supa
+          .from("app_config")
+          .select("value")
+          .eq("key", "access_pin")
+          .maybeSingle();
+        _cfg.k = data?.value || "1945";
+      }
+
+      function confirmPin() {
+        const val = document.getElementById("pin-input").value;
+        if (_cfg.k === null) {
+          document.getElementById("pin-error").classList.remove("hidden");
+          return;
+        }
+        if (val === _cfg.k) {
+          pinUnlocked = true;
+          document.getElementById("modal-pin").style.display = "none";
+          document.getElementById("pin-input").value = "";
+          document.getElementById("pin-error").classList.add("hidden");
+          _doSwitchToUsers();
+        } else {
+          document.getElementById("pin-error").classList.remove("hidden");
+          document.getElementById("pin-input").value = "";
+          document.getElementById("pin-input").focus();
+        }
+      }
+
+      function closePinModal() {
+        document.getElementById("modal-pin").style.display = "none";
+        document.getElementById("pin-input").value = "";
+        document.getElementById("pin-error").classList.add("hidden");
+      }
+
+      function _doSwitchToUsers() {
+        document
+          .querySelectorAll(".tab-content")
+          .forEach((t) => t.classList.remove("active"));
+        document.getElementById("tab-users").classList.add("active");
+        document
+          .querySelectorAll("#main-nav button")
+          .forEach((b) =>
+            b.classList.remove(
+              "border-b-4",
+              "border-blue-600",
+              "text-blue-600",
+            ),
+          );
+        document
+          .getElementById("btn-users")
+          .classList.add("border-b-4", "border-blue-600", "text-blue-600");
+        loadUsers();
+        window.scrollTo(0, 0);
+      }
+
+      function openChangePinModal() {
+        document.getElementById("modal-change-pin").style.display = "flex";
+        document.getElementById("cp-old").value = "";
+        document.getElementById("cp-new").value = "";
+        document.getElementById("cp-confirm").value = "";
+        document.getElementById("cp-error").classList.add("hidden");
+        document.getElementById("cp-success").classList.add("hidden");
+        setTimeout(() => document.getElementById("cp-old").focus(), 50);
+      }
+
+      function closeChangePinModal() {
+        document.getElementById("modal-change-pin").style.display = "none";
+      }
+
+      async function doChangePin() {
+        const oldVal = document.getElementById("cp-old").value;
+        const newVal = document.getElementById("cp-new").value;
+        const confVal = document.getElementById("cp-confirm").value;
+        const errEl = document.getElementById("cp-error");
+        const okEl = document.getElementById("cp-success");
+        const btnModifica = document.querySelector(
+          "#modal-change-pin button[onclick='doChangePin()']",
+        );
+        errEl.classList.add("hidden");
+        okEl.classList.add("hidden");
+        if (oldVal !== _cfg.k) {
+          errEl.innerText = "PIN vechi incorect.";
+          errEl.classList.remove("hidden");
+          document.getElementById("cp-old").value = "";
+          document.getElementById("cp-old").focus();
+          return;
+        }
+        if (newVal.length < 4) {
+          errEl.innerText = "PIN-ul nou trebuie să aibă minim 4 caractere.";
+          errEl.classList.remove("hidden");
+          return;
+        }
+        if (newVal !== confVal) {
+          errEl.innerText = "PIN-urile noi nu coincid.";
+          errEl.classList.remove("hidden");
+          document.getElementById("cp-confirm").value = "";
+          document.getElementById("cp-confirm").focus();
+          return;
+        }
+        btnModifica.disabled = true;
+        btnModifica.innerText = "Se salvează...";
+        const { error } = await _supa
+          .from("app_config")
+          .update({ value: newVal })
+          .eq("key", "access_pin");
+        btnModifica.disabled = false;
+        btnModifica.innerText = "Modifică PIN";
+        if (error) {
+          errEl.innerText = "Eroare Supabase: " + error.message;
+          errEl.classList.remove("hidden");
+          return;
+        }
+        _cfg.k = newVal;
+        pinUnlocked = false;
+        okEl.classList.remove("hidden");
+        document.getElementById("cp-old").value = "";
+        document.getElementById("cp-new").value = "";
+        document.getElementById("cp-confirm").value = "";
+        setTimeout(() => closeChangePinModal(), 1200);
+      }
+
+      function closeModal() {
+        document.getElementById("modal-view").classList.add("hidden");
+      }
+      function filterTable() {
+        currentSearchQuery = document.getElementById("search-box").value.trim();
+        // Debounce: așteptăm 350ms după ultimul caracter înainte de a interoga serverul
+        clearTimeout(_searchDebounceTimer);
+        _searchDebounceTimer = setTimeout(() => {
+          loadFise(1);
+        }, 350);
+      }
+
+      function toggleExportDates() {
+        const type = document.getElementById("export-type").value;
+        document
+          .getElementById("export-dates")
+          .classList.toggle("hidden", type !== "period");
+      }
+
+      async function exportToExcel() {
+        const type = document.getElementById("export-type").value;
+        let dataToExport = [];
+
+        if (type === "current") {
+          // Exportăm TOATE fișele filtrate de pe server (nu doar pagina curentă)
+          if (totalFilteredCount === 0)
+            return alert("Nu există date vizibile de exportat!");
+
+          // Fetch toate fișele filtrate de pe server
+          let exportQuery = buildBaseQuery(false)
+            .order("updated_at", { ascending: false })
+            .range(0, totalFilteredCount - 1);
+          const { data: filteredAll, error: errF } = await exportQuery;
+          if (errF || !filteredAll)
+            return alert(
+              "Eroare la export: " + (errF?.message || "necunoscută"),
+            );
+          dataToExport = filteredAll;
+        } else {
+          let query = _supa
+            .from("fise")
+            .select("*")
+            .eq("is_deleted", false)
+            .order("created_at", { ascending: true });
+          if (activeUser.rol !== "admin")
+            query = query.eq("alocat_catre", activeUser.service);
+
+          if (type === "period") {
+            const start = document.getElementById("exp-start").value;
+            const end = document.getElementById("exp-end").value;
+            if (!start || !end) return alert("Selectați perioada!");
+            query = query
+              .gte("created_at", start + "T00:00")
+              .lte("created_at", end + "T23:59");
+          }
+
+          const { data, error } = await query;
+          if (error || !data.length)
+            return alert("Nu există date de exportat!");
+          dataToExport = data;
+        }
+
+        const rows = dataToExport.map((f, idx) => ({
+          "Nr. Crt": idx + 1,
+          "ID Fisa": f.id,
+          "Data Inregistrare": f.created_at
+            ? (() => {
+                const parts = f.created_at.substring(0, 10).split("-");
+                const time = f.created_at.substring(11, 19);
+                return `${parts[2]}-${parts[1]}-${parts[0]} ${time}`;
+              })()
+            : "",
+          "Nume Client": f.nume_client,
+          Telefon: f.tel_client,
+          Email: f.email_client,
+          Adresa: f.adresa_client,
+          Județ: f.judet_client || "",
+          Categorie: f.categorie,
+          "Marca/Model": f.marca_model,
+          VIN: f.vin_produs,
+          "Emitent Factura": f.magazin || "",
+          "Nr Factura": f.nr_factura,
+          "Data Factura": f.data_factura
+            ? f.data_factura.split("-").reverse().join("-")
+            : "",
+          "Tip Garantie": f.tip_garantie,
+          "Observatii Produs": f.obs_produs,
+          "Data Preluare Fizica": f.data_preluare_fizica
+            ? f.data_preluare_fizica.split("-").reverse().join("-")
+            : "",
+          "KM Sesizare": f.km_la_sesizare != null ? f.km_la_sesizare : "",
+          "Reclamatie Client": f.reclamatie_client,
+          Status: f.status,
+          "Alocat Catre": f.alocat_catre,
+          Tehnician: f.tehnician,
+          "KM/Ore": f.km || "",
+          Cost: f.cost || "",
+          "Raport Tehnic": f.raport_reparatie,
+        }));
+
+        const worksheet = XLSX.utils.json_to_sheet(rows);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Fise Service");
+        XLSX.writeFile(
+          workbook,
+          `Export_Geeli_Service_${new Date().toISOString().slice(0, 10)}.xlsx`,
+        );
+      }
+
+      async function openArchiveModal() {
+        if (activeUser.rol !== "admin") return;
+
+        const { data, error } = await _supa
+          .from("fise")
+          .select("id, deleted_at, deleted_by_name, deleted_by_username")
+          .eq("is_deleted", true)
+          .order("deleted_at", { ascending: false });
+
+        if (error) {
+          alert("Eroare la încărcarea arhivei: " + error.message);
+          return;
+        }
+
+        const body = document.getElementById("archive-rows");
+
+        if (data.length === 0) {
+          body.innerHTML =
+            '<tr><td colspan="4" class="p-10 text-center text-slate-400 italic">Nu există fișe în arhivă.</td></tr>';
+        } else {
+          const rows = data.map((f) => {
+            const dataSters = f.deleted_at
+              ? new Date(f.deleted_at).toLocaleString("ro-RO")
+              : "-";
+            return `
+        <tr class="hover:bg-red-50 transition-colors border-b border-slate-100">
+            <td class="p-3 font-mono text-blue-700">${f.id}</td>
+            <td class="p-3">${dataSters}</td>
+            <td class="p-3">${f.deleted_by_name || "-"}</td>
+            <td class="p-3 text-slate-500 uppercase">${f.deleted_by_username || "-"}</td>
+            <td class="p-3 text-right">
+                <button onclick="restoreFisa(${f.id})" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-[10px] font-black uppercase transition shadow-sm">
+                    Restabilire
+                </button>
+            </td>
+        </tr>`;
+          });
+          body.innerHTML = rows.join("");
+        }
+
+        document.getElementById("modal-archive").classList.remove("hidden");
+      }
+
+      function closeArchiveModal() {
+        document.getElementById("modal-archive").classList.add("hidden");
+      }
+
+      async function updateArchiveCounter() {
+        if (activeUser.rol !== "admin") return;
+
+        const { count, error } = await _supa
+          .from("fise")
+          .select("*", { count: "exact", head: true })
+          .eq("is_deleted", true);
+
+        if (!error) {
+          const display = document.getElementById("archive-count");
+          display.innerText = count;
+          if (count > 0) {
+            display.className = "text-sm font-black text-red-600 leading-none";
+          } else {
+            display.className =
+              "text-sm font-black text-green-600 leading-none";
+          }
+        }
+      }
+
+      async function restoreFisa(id) {
+        if (!confirm(`Sigur doriți să restabiliți fișa cu ID-ul ${id}?`))
+          return;
+
+        try {
+          const { error } = await _supa
+            .from("fise")
+            .update({
+              is_deleted: false,
+              deleted_at: null,
+              deleted_by_name: null,
+              deleted_by_username: null,
+            })
+            .eq("id", id);
+
+          if (error) throw error;
+
+          alert("Fișa a fost restabilită cu succes!");
+
+          await updateArchiveCounter();
+          await openArchiveModal();
+          if (typeof loadFise === "function") await loadFise();
+        } catch (err) {
+          alert("Eroare la restabilire: " + err.message);
+        }
+      }
+      const modeleCategorii = {
+        "Bicicleta electrica": [
+          "GF25",
+          "GT25",
+          "MJ1",
+          "RSIII PRO",
+          "T7",
+          "TNT5",
+          "W6",
+          "ZF6",
+          "Altele",
+        ],
+        "Tricicleta electrica": [
+          "GRAPE 25 MAX",
+          "OPTIMUS ULTRA",
+          "E-KAMYONET SKY VAN",
+          "GL35000",
+          "MOBILITY",
+          "RUZGAR",
+          "Altele",
+        ],
+        "Scuter electric": [
+          "MOPED ELECTRIC GEELI UTIL 2",
+          "MT3 PRO X",
+          "BLUES",
+          "ECO RIDER MQ",
+          "GREE 08",
+          "REE1500",
+          "SWEET",
+          "Altele",
+        ],
+        "Cvadraciclu electric": ["ARORA S2", "ARORA S1", "CITY KUBA", "Altele"],
+      };
+
+      function updateModelOptions() {
+        const catSelect = document.getElementById("p-cat");
+        const catAltInput = document.getElementById("p-cat-alt");
+        const modWrapper = document.getElementById("p-mod-wrapper");
+        const selectie = catSelect.value;
+
+        if (selectie === "Alta") {
+          catAltInput.classList.remove("hidden");
+          renderModelInput();
+          return;
+        } else {
+          catAltInput.classList.add("hidden");
+        }
+
+        if (modeleCategorii[selectie]) {
+          let optionsHtml = `<select id="p-mod-select" onchange="handleModelSelection(this)" class="w-full p-3 border-2 border-slate-200 rounded-lg text-sm font-black bg-slate-50">`;
+          optionsHtml += `<option value="" disabled selected>Selectați modelul...</option>`;
+
+          modeleCategorii[selectie].forEach((mod) => {
+            optionsHtml += `<option value="${mod}">${mod}</option>`;
+          });
+
+          optionsHtml += `</select>`;
+          optionsHtml += `<input type="hidden" id="p-mod" value="">`;
+
+          modWrapper.innerHTML = optionsHtml;
+        } else {
+          renderModelInput();
+        }
+      }
+
+      function handleModelSelection(selectElement) {
+        const pModHidden = document.getElementById("p-mod");
+        if (selectElement.value === "Altele") {
+          renderModelInput();
+        } else {
+          pModHidden.value = selectElement.value;
+        }
+      }
+
+      function renderModelInput() {
+        const modWrapper = document.getElementById("p-mod-wrapper");
+        modWrapper.innerHTML = `<input type="text" id="p-mod" placeholder="Introduceți Marcă / Model" class="w-full p-3 border-2 border-slate-200 rounded-lg font-semibold text-sm">`;
+      }
+
+      async function openLogModal(fisaId) {
+        document.getElementById("log-modal-fisa-id-display").textContent =
+          fisaId;
+        document.getElementById("log-rows").innerHTML =
+          '<tr><td colspan="3" class="p-4 text-center text-slate-400 italic text-xs">Se încarcă...</td></tr>';
+        document.getElementById("modal-log").classList.remove("hidden");
+
+        const { data, error } = await _supa
+          .from("fise_log")
+          .select("*")
+          .eq("fisa_id", fisaId)
+          .order("data_ora", { ascending: true });
+
+        const tbody = document.getElementById("log-rows");
+        if (error || !data || data.length === 0) {
+          tbody.innerHTML =
+            '<tr><td colspan="3" class="p-4 text-center text-slate-400 italic text-xs">Nu există înregistrări log pentru această fișă.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = data
+          .map((row) => {
+            const d = new Date(row.data_ora);
+            const dataOra =
+              d.toLocaleDateString("ro-RO", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              }) +
+              " " +
+              d.toLocaleTimeString("ro-RO", {
+                hour: "2-digit",
+                minute: "2-digit",
+              });
+            const badgeClass =
+              row.actiune === "creat"
+                ? "bg-green-100 text-green-700"
+                : "bg-blue-100 text-blue-700";
+            return `<tr class="border-b border-slate-100">
+            <td class="p-3">
+              <span class="px-2 py-0.5 rounded font-black text-[10px] uppercase ${badgeClass}">${row.actiune}</span>
+            </td>
+            <td class="p-3 text-xs font-bold text-slate-700 whitespace-nowrap">${dataOra}</td>
+            <td class="p-3 text-xs font-bold text-slate-900">${row.user_nume || ""} <span class="text-slate-400 font-normal">(${row.user_username || ""})</span></td>
+          </tr>`;
+          })
+          .join("");
+      }
+
+      function closeLogModal() {
+        document.getElementById("modal-log").classList.add("hidden");
+      }
+
+      // ── FACTURA STORAGE ──────────────────────────────────────────────────
+
+      // Starea curentă a facturii în formularul de editare/adăugare
+      let _currentFacturaPath = null;
+
+      function resetFacturaUI() {
+        _currentFacturaPath = null;
+        document.getElementById("factura-file-input").value = "";
+        document.getElementById("factura-status-text").textContent = "";
+        document
+          .getElementById("factura-upload-progress")
+          .classList.add("hidden");
+        document.getElementById("factura-progress-bar").style.width = "0%";
+        _setFacturaViewBtn(false);
+      }
+
+      function refreshFacturaUI(path) {
+        _currentFacturaPath = path || null;
+        if (_currentFacturaPath) {
+          const fileName = _currentFacturaPath.split("/").pop();
+          document.getElementById("factura-status-text").textContent =
+            "✓ " + fileName;
+          document.getElementById("factura-status-text").className =
+            "text-[10px] font-black text-green-700 italic";
+          _setFacturaViewBtn(true);
+        } else {
+          document.getElementById("factura-status-text").textContent =
+            "Nicio factură atașată";
+          document.getElementById("factura-status-text").className =
+            "text-[10px] font-black text-slate-400 italic";
+          _setFacturaViewBtn(false);
+        }
+      }
+
+      function _setFacturaViewBtn(active) {
+        const btnView = document.getElementById("factura-view-btn");
+        const btnDelete = document.getElementById("factura-delete-btn");
+        if (active) {
+          btnView.disabled = false;
+          btnView.className =
+            "flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-md font-semibold text-xs transition active:scale-95 bg-slate-600 hover:bg-blue-700 text-white cursor-pointer";
+          btnDelete.disabled = false;
+          btnDelete.className =
+            "flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-md font-semibold text-xs transition active:scale-95 bg-red-500 hover:bg-red-600 text-white cursor-pointer";
+        } else {
+          btnView.disabled = true;
+          btnView.className =
+            "flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-md font-semibold text-xs transition active:scale-95 bg-slate-200 text-slate-400 cursor-not-allowed";
+          btnDelete.disabled = true;
+          btnDelete.className =
+            "flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-md font-semibold text-xs transition active:scale-95 bg-slate-200 text-slate-400 cursor-not-allowed";
+        }
+      }
+
+      async function handleFacturaFileSelected() {
+        const input = document.getElementById("factura-file-input");
+        const file = input.files && input.files[0];
+        if (!file) return;
+
+        const editId = document.getElementById("edit-fisa-id").value;
+        if (!editId) {
+          alert("Salvați mai întâi fișa înainte de a atașa o factură.");
+          input.value = "";
+          return;
+        }
+
+        // Validare tip fișier
+        const allowed = [
+          "image/jpeg",
+          "image/png",
+          "image/webp",
+          "image/gif",
+          "application/pdf",
+        ];
+        if (!allowed.includes(file.type)) {
+          alert(
+            "Tip fișier neacceptat. Folosiți imagine (JPG, PNG, WEBP) sau PDF.",
+          );
+          input.value = "";
+          return;
+        }
+
+        // Validare dimensiune (max 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+          alert(
+            "Fișierul este prea mare. Dimensiunea maximă acceptată este 10 MB.",
+          );
+          input.value = "";
+          return;
+        }
+
+        const ext = file.name.split(".").pop().toLowerCase();
+        const storagePath = editId + "/factura." + ext;
+
+        // Afișare progress
+        const progressWrap = document.getElementById("factura-upload-progress");
+        const progressBar = document.getElementById("factura-progress-bar");
+        progressWrap.classList.remove("hidden");
+        progressBar.style.width = "30%";
+
+        // Dacă există deja un fișier vechi, îl ștergem mai întâi
+        if (_currentFacturaPath) {
+          await _supa.storage.from("facturi").remove([_currentFacturaPath]);
+        }
+
+        progressBar.style.width = "60%";
+
+        // Upload în Supabase Storage
+        const { error: uploadError } = await _supa.storage
+          .from("facturi")
+          .upload(storagePath, file, { upsert: true, contentType: file.type });
+
+        if (uploadError) {
+          progressWrap.classList.add("hidden");
+          progressBar.style.width = "0%";
+          input.value = "";
+          alert("Eroare la încărcare: " + uploadError.message);
+          return;
+        }
+
+        progressBar.style.width = "90%";
+
+        // Salvare cale în baza de date
+        const { error: dbError } = await _supa
+          .from("fise")
+          .update({ factura_path: storagePath })
+          .eq("id", editId);
+
+        progressBar.style.width = "100%";
+
+        if (dbError) {
+          alert(
+            "Fișierul a fost încărcat dar nu s-a putut salva calea în baza de date: " +
+              dbError.message,
+          );
+        } else {
+          // Actualizare UI
+          refreshFacturaUI(storagePath);
+          // Actualizare currentFisa dacă e deschisă
+          if (currentFisa && currentFisa.id === editId) {
+            currentFisa.factura_path = storagePath;
+          }
+          // Log acțiune
+          await _supa.from("fise_log").insert([
+            {
+              fisa_id: editId,
+              actiune: "factură atașată",
+              data_ora: new Date().toISOString(),
+              user_username: activeUser.username,
+              user_nume: activeUser.nume_complet,
+            },
+          ]);
+        }
+
+        setTimeout(() => {
+          progressWrap.classList.add("hidden");
+          progressBar.style.width = "0%";
+        }, 800);
+
+        input.value = "";
+      }
+
+      function viewFactura() {
+        if (!_currentFacturaPath) return;
+        const { data } = _supa.storage
+          .from("facturi")
+          .getPublicUrl(_currentFacturaPath);
+        if (data && data.publicUrl) {
+          window.open(data.publicUrl, "_blank");
+        } else {
+          alert("Nu s-a putut genera URL-ul pentru factură.");
+        }
+      }
+
+      async function deleteFactura() {
+        if (!_currentFacturaPath) return;
+        if (!confirm("Sigur doriți să ștergeți factura atașată acestei fișe?"))
+          return;
+        const editId = document.getElementById("edit-fisa-id").value;
+        if (!editId) return;
+
+        await _supa.storage.from("facturi").remove([_currentFacturaPath]);
+        const { error } = await _supa
+          .from("fise")
+          .update({ factura_path: null })
+          .eq("id", editId);
+
+        if (error) {
+          alert("Eroare la ștergerea facturii: " + error.message);
+          return;
+        }
+        await _supa.from("fise_log").insert([
+          {
+            fisa_id: editId,
+            actiune: "factură ștearsă",
+            data_ora: new Date().toISOString(),
+            user_username: activeUser.username,
+            user_nume: activeUser.nume_complet,
+          },
+        ]);
+        if (currentFisa && currentFisa.id === editId) {
+          currentFisa.factura_path = null;
+        }
+        refreshFacturaUI(null);
+      }
+
+      async function deleteFacturaRow(fisaId, facturaPath, btn) {
+        if (!facturaPath) return;
+        if (
+          !confirm(
+            "Sigur doriți să ștergeți factura atașată fișei " + fisaId + "?",
+          )
+        )
+          return;
+
+        await _supa.storage.from("facturi").remove([facturaPath]);
+        const { error } = await _supa
+          .from("fise")
+          .update({ factura_path: null })
+          .eq("id", fisaId);
+
+        if (error) {
+          alert("Eroare la ștergerea facturii: " + error.message);
+          return;
+        }
+        await _supa.from("fise_log").insert([
+          {
+            fisa_id: fisaId,
+            actiune: "factură ștearsă",
+            data_ora: new Date().toISOString(),
+            user_username: activeUser.username,
+            user_nume: activeUser.nume_complet,
+          },
+        ]);
+        if (currentFisa && currentFisa.id === fisaId) {
+          currentFisa.factura_path = null;
+        }
+        // Actualizează DOM direct: dezactivează butonul 👁 și butonul 🗑
+        const td = btn.closest("td");
+        const buttons = td.querySelectorAll("button");
+        const viewBtn = buttons[1];
+        const delBtn = buttons[2];
+        if (viewBtn) {
+          viewBtn.disabled = true;
+          viewBtn.className =
+            "factura-btn flex items-center justify-center bg-slate-200 text-slate-400 cursor-not-allowed rounded-lg transition active:scale-95";
+          viewBtn.title = "Nicio factură atașată";
+          viewBtn.setAttribute("onclick", "event.stopPropagation()");
+        }
+        if (delBtn) {
+          delBtn.disabled = true;
+          delBtn.className =
+            "factura-btn flex items-center justify-center bg-slate-200 text-slate-400 cursor-not-allowed rounded-lg transition active:scale-95";
+          delBtn.title = "Nicio factură atașată";
+          delBtn.setAttribute("onclick", "event.stopPropagation()");
+        }
+      }
+
+      function triggerFacturaUploadRow(fisaId, btn) {
+        const input = btn.closest("td").querySelector(".factura-row-input");
+        if (input) input.click();
+      }
+
+      function viewFacturaRow(facturaPath) {
+        if (!facturaPath) return;
+        const { data } = _supa.storage
+          .from("facturi")
+          .getPublicUrl(facturaPath);
+        if (data && data.publicUrl) {
+          window.open(data.publicUrl, "_blank");
+        } else {
+          alert("Nu s-a putut genera URL-ul pentru factură.");
+        }
+      }
+
+      async function handleFacturaRowUpload(event, fisaId, inputEl) {
+        const file = event.target.files && event.target.files[0];
+        if (!file) return;
+
+        const allowed = [
+          "image/jpeg",
+          "image/png",
+          "image/webp",
+          "image/gif",
+          "application/pdf",
+        ];
+        if (!allowed.includes(file.type)) {
+          alert(
+            "Tip fișier neacceptat. Folosiți imagine (JPG, PNG, WEBP) sau PDF.",
+          );
+          inputEl.value = "";
+          return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          alert(
+            "Fișierul este prea mare. Dimensiunea maximă acceptată este 10 MB.",
+          );
+          inputEl.value = "";
+          return;
+        }
+
+        const ext = file.name.split(".").pop().toLowerCase();
+        const storagePath = fisaId + "/factura." + ext;
+
+        // Verifică dacă există deja un fișier vechi și îl șterge
+        const { data: existing } = await _supa
+          .from("fise")
+          .select("factura_path")
+          .eq("id", fisaId)
+          .maybeSingle();
+        if (existing && existing.factura_path) {
+          await _supa.storage.from("facturi").remove([existing.factura_path]);
+        }
+
+        const addBtn = inputEl
+          .closest("td")
+          .querySelector("button:first-of-type");
+        if (addBtn) {
+          addBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="white" viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>`;
+          addBtn.classList.add("animate-spin");
+        }
+
+        const { error: uploadError } = await _supa.storage
+          .from("facturi")
+          .upload(storagePath, file, { upsert: true, contentType: file.type });
+
+        if (uploadError) {
+          if (addBtn) {
+            addBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="white" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>`;
+            addBtn.classList.remove("animate-spin");
+          }
+          inputEl.value = "";
+          alert("Eroare la încărcare: " + uploadError.message);
+          return;
+        }
+
+        const { error: dbError } = await _supa
+          .from("fise")
+          .update({ factura_path: storagePath })
+          .eq("id", fisaId);
+
+        if (dbError) {
+          alert(
+            "Fișierul a fost încărcat dar nu s-a putut salva calea în baza de date: " +
+              dbError.message,
+          );
+        } else {
+          await _supa.from("fise_log").insert([
+            {
+              fisa_id: fisaId,
+              actiune: "factură atașată",
+              data_ora: new Date().toISOString(),
+              user_username: activeUser.username,
+              user_nume: activeUser.nume_complet,
+            },
+          ]);
+          // Actualizează butonul 👁 din celulă direct, fără reload pagină
+          const td = inputEl.closest("td");
+          const viewBtn = td.querySelectorAll("button")[1];
+          const delBtn = td.querySelectorAll("button")[2];
+          if (viewBtn) {
+            viewBtn.disabled = false;
+            viewBtn.className =
+              "factura-btn flex items-center justify-center bg-slate-600 hover:bg-blue-700 text-white cursor-pointer rounded-lg transition active:scale-95";
+            viewBtn.title = "Vizualizează factura";
+            viewBtn.setAttribute(
+              "onclick",
+              `event.stopPropagation(); viewFacturaRow('${storagePath}')`,
+            );
+          }
+          if (delBtn) {
+            delBtn.disabled = false;
+            delBtn.className =
+              "factura-btn flex items-center justify-center bg-red-600 hover:bg-red-700 text-white cursor-pointer rounded-lg transition active:scale-95";
+            delBtn.title = "Șterge factura";
+            delBtn.setAttribute(
+              "onclick",
+              `event.stopPropagation(); deleteFacturaRow('${fisaId}', '${storagePath}', this)`,
+            );
+          }
+          // Resetează butonul +
+          if (addBtn) {
+            addBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="white" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>`;
+            addBtn.classList.remove("animate-spin");
+          }
+          // Actualizează și currentFisa dacă e deschisă
+          if (currentFisa && currentFisa.id === fisaId) {
+            currentFisa.factura_path = storagePath;
+          }
+        }
+        inputEl.value = "";
+      }
+
+      // ── END FACTURA STORAGE ──────────────────────────────────────────────
+
+      // ── IMAGINI STORAGE ──────────────────────────────────────────────────
+
+      let _imaginiCurrentFisaId = null;
+
+      function triggerImaginiUpload(fisaId, btn) {
+        const input = btn.closest("td").querySelector(".imagini-row-input");
+        if (input) input.click();
+      }
+
+      async function handleImaginiUpload(event, fisaId, inputEl) {
+        const files = Array.from(event.target.files || []);
+        if (!files.length) return;
+
+        const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+        const invalid = files.filter((f) => !allowed.includes(f.type));
+        if (invalid.length) {
+          alert(
+            "Tip fișier neacceptat. Folosiți doar imagini (JPG, PNG, WEBP, GIF).",
+          );
+          inputEl.value = "";
+          return;
+        }
+        const tooBig = files.filter((f) => f.size > 10 * 1024 * 1024);
+        if (tooBig.length) {
+          alert(
+            `${tooBig.length} fișier(e) depășesc 10 MB și nu vor fi încărcate.`,
+          );
+        }
+        const validFiles = files.filter(
+          (f) => allowed.includes(f.type) && f.size <= 10 * 1024 * 1024,
+        );
+        if (!validFiles.length) {
+          inputEl.value = "";
+          return;
+        }
+
+        // Animație pe butonul +
+        const addBtn = inputEl
+          .closest("td")
+          .querySelector("button:first-of-type");
+        const origIcon = addBtn ? addBtn.innerHTML : "";
+        if (addBtn) {
+          addBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="white" viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>`;
+          addBtn.classList.add("animate-spin");
+        }
+
+        let uploaded = 0;
+        for (const file of validFiles) {
+          const ext = file.name.split(".").pop().toLowerCase();
+          const storagePath = `${fisaId}/img_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.${ext}`;
+          const { error } = await _supa.storage
+            .from("imagini-fise")
+            .upload(storagePath, file, {
+              upsert: false,
+              contentType: file.type,
+            });
+          if (!error) uploaded++;
+        }
+
+        if (addBtn) {
+          addBtn.innerHTML = origIcon;
+          addBtn.classList.remove("animate-spin");
+        }
+        inputEl.value = "";
+
+        if (uploaded > 0) {
+          // Incrementează imagini_count în DB
+          await _supa.rpc("increment_imagini_count", {
+            fisa_id: fisaId,
+            delta: uploaded,
+          });
+          // Actualizează culoarea butonului 🖼 direct în DOM
+          const viewBtn = inputEl
+            .closest("td")
+            .querySelector("button:nth-of-type(2)");
+          if (viewBtn) {
+            viewBtn.className =
+              "imagini-btn flex items-center justify-center rounded-lg transition active:scale-95 bg-slate-900 hover:bg-slate-700 text-white cursor-pointer";
+            viewBtn.title = `Vezi imagini`;
+          }
+          alert(`${uploaded} imagine(i) încărcate cu succes.`);
+        } else {
+          alert("Nicio imagine nu a putut fi încărcată.");
+        }
+      }
+
+      async function openImaginiModal(fisaId) {
+        _imaginiCurrentFisaId = fisaId;
+        document.getElementById("imagini-modal-fisa-id").textContent = fisaId;
+        document.getElementById("imagini-grid").innerHTML =
+          `<p class="text-slate-400 text-xs font-bold col-span-3 text-center py-8">Se încarcă imaginile...</p>`;
+        document.getElementById("modal-imagini").classList.remove("hidden");
+        await loadImaginiGrid(fisaId);
+      }
+
+      function closeImaginiModal() {
+        document.getElementById("modal-imagini").classList.add("hidden");
+        document.getElementById("imagini-grid").innerHTML = "";
+        _imaginiCurrentFisaId = null;
+      }
+
+      async function loadImaginiGrid(fisaId) {
+        const { data, error } = await _supa.storage
+          .from("imagini-fise")
+          .list(fisaId + "/", {
+            sortBy: { column: "created_at", order: "asc" },
+          });
+
+        const grid = document.getElementById("imagini-grid");
+
+        if (error || !data || data.length === 0) {
+          grid.innerHTML = `<p class="text-slate-400 text-xs font-bold col-span-3 text-center py-8">Nicio imagine atașată acestei fișe.</p>`;
+          return;
+        }
+
+        // Salvează URL-urile pentru navigare fullscreen
+        _imaginiUrls = data.map((item) => {
+          const { data: urlData } = _supa.storage
+            .from("imagini-fise")
+            .getPublicUrl(`${fisaId}/${item.name}`);
+          return urlData.publicUrl;
+        });
+
+        grid.innerHTML = data
+          .map((item, idx) => {
+            const url = _imaginiUrls[idx];
+            const canDelete = activeUser.rol === "admin";
+            return `<div class="relative group rounded-xl overflow-hidden border-2 border-slate-200 bg-slate-100" style="aspect-ratio:1;">
+            <img src="${url}" alt="Imagine ${idx + 1}"
+              class="w-full h-full object-cover cursor-pointer hover:opacity-90 transition"
+              onclick="openImagineFullscreen(${idx})"
+              onerror="this.parentElement.innerHTML='<div class=\'flex items-center justify-center h-full text-slate-400 text-xs font-bold\'>Eroare</div>'">
+            ${
+              canDelete
+                ? `<button
+              onclick="deleteImagine('${fisaId}', '${item.name}', this)"
+              class="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              style="width:22px;height:22px;padding:0;"
+              title="Șterge imaginea">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+            </button>`
+                : ""
+            }
+          </div>`;
+          })
+          .join("");
+      }
+
+      let _imaginiUrls = [];
+      let _imaginiCurrentIdx = 0;
+      let _imaginiZoom = 1;
+
+      function openImagineFullscreen(idx) {
+        _imaginiCurrentIdx = idx;
+        _imaginiZoom = 1;
+        _renderFullscreen();
+        document
+          .getElementById("modal-imagine-fullscreen")
+          .classList.remove("hidden");
+      }
+
+      function _renderFullscreen() {
+        const img = document.getElementById("imagine-fullscreen-img");
+        img.src = _imaginiUrls[_imaginiCurrentIdx];
+        img.style.transform = `scale(${_imaginiZoom})`;
+        img.style.transition = "transform 0.2s ease";
+        // Counter
+        const counter = document.getElementById("imagine-fullscreen-counter");
+        if (counter)
+          counter.textContent = `${_imaginiCurrentIdx + 1} / ${_imaginiUrls.length}`;
+        // Săgeți
+        const btnPrev = document.getElementById("imagine-nav-prev");
+        const btnNext = document.getElementById("imagine-nav-next");
+        if (btnPrev)
+          btnPrev.style.visibility =
+            _imaginiCurrentIdx > 0 ? "visible" : "hidden";
+        if (btnNext)
+          btnNext.style.visibility =
+            _imaginiCurrentIdx < _imaginiUrls.length - 1 ? "visible" : "hidden";
+      }
+
+      function navigateImagine(dir) {
+        const newIdx = _imaginiCurrentIdx + dir;
+        if (newIdx < 0 || newIdx >= _imaginiUrls.length) return;
+        _imaginiCurrentIdx = newIdx;
+        _imaginiZoom = 1;
+        _renderFullscreen();
+      }
+
+      function zoomImagine(dir) {
+        _imaginiZoom = Math.min(4, Math.max(0.5, _imaginiZoom + dir * 0.25));
+        const img = document.getElementById("imagine-fullscreen-img");
+        img.style.transform = `scale(${_imaginiZoom})`;
+      }
+
+      function closeImagineFullscreen() {
+        document
+          .getElementById("modal-imagine-fullscreen")
+          .classList.add("hidden");
+        document.getElementById("imagine-fullscreen-img").src = "";
+        _imaginiZoom = 1;
+      }
+
+      // Listener tastatură pentru fullscreen
+      document.addEventListener("keydown", function (e) {
+        const modal = document.getElementById("modal-imagine-fullscreen");
+        if (!modal || modal.classList.contains("hidden")) return;
+        if (e.key === "ArrowLeft") {
+          e.preventDefault();
+          navigateImagine(-1);
+        }
+        if (e.key === "ArrowRight") {
+          e.preventDefault();
+          navigateImagine(1);
+        }
+        if (e.key === "+" || e.key === "=") {
+          e.preventDefault();
+          zoomImagine(1);
+        }
+        if (e.key === "-") {
+          e.preventDefault();
+          zoomImagine(-1);
+        }
+        if (e.key === "Escape") {
+          closeImagineFullscreen();
+        }
+      });
+
+      async function deleteImagine(fisaId, fileName, btn) {
+        if (!confirm("Sigur doriți să ștergeți această imagine?")) return;
+        const { error } = await _supa.storage
+          .from("imagini-fise")
+          .remove([`${fisaId}/${fileName}`]);
+        if (error) {
+          alert("Eroare la ștergere: " + error.message);
+          return;
+        }
+        // Elimină cardul din grid
+        btn.closest(".relative").remove();
+        await _supa.rpc("increment_imagini_count", {
+          fisa_id: fisaId,
+          delta: -1,
+        });
+        // Dacă grila e goală, afișează mesaj
+        const grid = document.getElementById("imagini-grid");
+        if (!grid.querySelector(".relative")) {
+          grid.innerHTML = `<p class="text-slate-400 text-xs font-bold col-span-3 text-center py-8">Nicio imagine atașată acestei fișe.</p>`;
+        }
+      }
+
+      async function handleImaginiUploadModal(event) {
+        const files = Array.from(event.target.files || []);
+        if (!files.length || !_imaginiCurrentFisaId) return;
+
+        const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+        const validFiles = files.filter(
+          (f) => allowed.includes(f.type) && f.size <= 10 * 1024 * 1024,
+        );
+        if (!validFiles.length) {
+          alert(
+            "Niciun fișier valid. Folosiți imagini JPG/PNG/WEBP/GIF sub 10 MB.",
+          );
+          event.target.value = "";
+          return;
+        }
+
+        const grid = document.getElementById("imagini-grid");
+        // Înlocuiește mesajul "Nicio imagine" dacă există
+        const emptyMsg = grid.querySelector("p");
+        if (emptyMsg) emptyMsg.remove();
+
+        let uploaded = 0;
+        for (const file of validFiles) {
+          const ext = file.name.split(".").pop().toLowerCase();
+          const storagePath = `${_imaginiCurrentFisaId}/img_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.${ext}`;
+          const { error } = await _supa.storage
+            .from("imagini-fise")
+            .upload(storagePath, file, {
+              upsert: false,
+              contentType: file.type,
+            });
+          if (!error) {
+            uploaded++;
+            // Adaugă imaginea direct în grid fără reload
+            const { data: urlData } = _supa.storage
+              .from("imagini-fise")
+              .getPublicUrl(storagePath);
+            const url = urlData.publicUrl;
+            const fileName = storagePath.split("/").pop();
+            const canDelete = activeUser.rol === "admin";
+            _imaginiUrls.push(url);
+            const newIdx = _imaginiUrls.length - 1;
+            const card = document.createElement("div");
+            card.className =
+              "relative group rounded-xl overflow-hidden border-2 border-slate-200 bg-slate-100";
+            card.style.aspectRatio = "1";
+            card.innerHTML = `
+              <img src="${url}" alt="Imagine"
+                class="w-full h-full object-cover cursor-pointer hover:opacity-90 transition"
+                onclick="openImagineFullscreen(${newIdx})"
+                onerror="this.parentElement.innerHTML='<div class=\\'flex items-center justify-center h-full text-slate-400 text-xs font-bold\\'>Eroare</div>'">
+              ${
+                canDelete
+                  ? `<button
+                onclick="deleteImagine('${_imaginiCurrentFisaId}', '${fileName}', this)"
+                class="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                style="width:22px;height:22px;padding:0;"
+                title="Șterge imaginea">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+              </button>`
+                  : ""
+              }`;
+            grid.appendChild(card);
+          }
+        }
+
+        event.target.value = "";
+        if (uploaded === 0) {
+          alert("Nicio imagine nu a putut fi încărcată.");
+        } else {
+          await _supa.rpc("increment_imagini_count", {
+            fisa_id: _imaginiCurrentFisaId,
+            delta: uploaded,
+          });
+        }
+      }
+
+      // ── END IMAGINI STORAGE ──────────────────────────────────────────────
+    </script>
+    <div
+      id="modal-archive"
+      class="fixed inset-0 bg-black/80 hidden z-[60] overflow-y-auto p-4 flex items-center justify-center no-print"
+    >
+      <div
+        class="bg-white w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden"
+      >
+        <div
+          class="p-4 bg-slate-900 text-white flex justify-between items-center"
+        >
+          <h3 class="font-black uppercase italic tracking-tighter">
+            Arhivă Fișe Șterse
+          </h3>
+          <button
+            onclick="closeArchiveModal()"
+            class="text-white font-black text-xl"
+          >
+            &times;
+          </button>
+        </div>
+        <div class="p-4 overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-100 text-slate-600 uppercase font-black">
+              <tr>
+                <th class="p-3">ID Fișă</th>
+                <th class="p-3">Data/Ora Ștergerii</th>
+                <th class="p-3">Nume Administrator</th>
+                <th class="p-3">Username</th>
+                <th class="p-3 text-right">Acțiuni</th>
+              </tr>
+            </thead>
+            <tbody
+              id="archive-rows"
+              class="divide-y divide-slate-100 text-slate-900 font-bold"
+            ></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="modal-pin"
+      class="fixed inset-0 bg-black/80 z-[90] items-center justify-center p-4 no-print"
+      style="display: none"
+    >
+      <div
+        class="bg-white w-full max-w-xs rounded-2xl shadow-2xl overflow-hidden border-t-4 border-blue-600"
+      >
+        <div
+          class="p-4 bg-slate-900 text-white flex justify-between items-center"
+        >
+          <h3 class="font-black uppercase italic tracking-tighter text-sm">
+            🔒 Acces Utilizatori
+          </h3>
+          <button
+            onclick="closePinModal()"
+            class="text-white font-black text-xl leading-none"
+          >
+            &times;
+          </button>
+        </div>
+        <div class="p-6 flex flex-col items-center gap-4">
+          <p
+            class="text-xs font-black text-slate-500 uppercase tracking-widest text-center"
+          >
+            Introduceți codul PIN
+          </p>
+          <input
+            type="text"
+            id="pin-input"
+            maxlength="20"
+            placeholder="Cod PIN"
+            onkeydown="if (event.key === 'Enter') confirmPin();"
+            class="w-full text-center text-2xl font-black tracking-[0.5em] p-3 border-2 border-slate-300 rounded-xl outline-none focus:border-blue-500 transition"
+          />
+          <p id="pin-error" class="text-red-600 text-xs font-black hidden">
+            PIN incorect. Încercați din nou.
+          </p>
+          <button
+            onclick="confirmPin()"
+            class="w-full bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl font-black uppercase tracking-wide transition active:scale-95"
+          >
+            Confirmare
+          </button>
+          <button
+            onclick="closePinModal()"
+            class="w-full text-sm text-slate-400 font-bold hover:text-slate-600 transition"
+          >
+            Anulează
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="modal-change-pin"
+      class="fixed inset-0 bg-black/80 z-[95] items-center justify-center p-4 no-print"
+      style="display: none"
+      onclick="if (event.target === this) closeChangePinModal();"
+    >
+      <div
+        class="bg-white w-full max-w-xs rounded-2xl shadow-2xl overflow-hidden border-t-4 border-slate-700"
+      >
+        <div
+          class="p-4 bg-slate-900 text-white flex justify-between items-center"
+        >
+          <h3 class="font-black uppercase italic tracking-tighter text-sm">
+            🔑 Modificare PIN
+          </h3>
+          <button
+            onclick="closeChangePinModal()"
+            class="text-white font-black text-xl leading-none"
+          >
+            &times;
+          </button>
+        </div>
+        <div class="p-6 flex flex-col gap-3">
+          <input
+            type="text"
+            id="cp-old"
+            maxlength="20"
+            placeholder="PIN vechi"
+            onkeydown="
+              if (event.key === 'Enter')
+                document.getElementById('cp-new').focus();
+            "
+            class="w-full text-center text-lg font-black tracking-widest p-3 border-2 border-slate-300 rounded-xl outline-none focus:border-slate-600 transition"
+          />
+          <input
+            type="text"
+            id="cp-new"
+            maxlength="20"
+            placeholder="PIN nou"
+            onkeydown="
+              if (event.key === 'Enter')
+                document.getElementById('cp-confirm').focus();
+            "
+            class="w-full text-center text-lg font-black tracking-widest p-3 border-2 border-slate-300 rounded-xl outline-none focus:border-blue-500 transition"
+          />
+          <input
+            type="text"
+            id="cp-confirm"
+            maxlength="20"
+            placeholder="Confirmă PIN nou"
+            onkeydown="if (event.key === 'Enter') doChangePin();"
+            class="w-full text-center text-lg font-black tracking-widest p-3 border-2 border-slate-300 rounded-xl outline-none focus:border-blue-500 transition"
+          />
+          <p
+            id="cp-error"
+            class="text-red-600 text-xs font-black text-center hidden"
+          ></p>
+          <p
+            id="cp-success"
+            class="text-green-600 text-xs font-black text-center hidden"
+          >
+            ✓ PIN modificat cu succes!
+          </p>
+          <button
+            onclick="doChangePin()"
+            class="w-full bg-slate-800 hover:bg-slate-900 text-white p-3 rounded-xl font-black uppercase tracking-wide transition active:scale-95"
+          >
+            Modifică PIN
+          </button>
+          <button
+            onclick="closeChangePinModal()"
+            class="w-full text-sm text-slate-400 font-bold hover:text-slate-600 transition"
+          >
+            Anulează
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="modal-log"
+      class="fixed inset-0 bg-black/70 hidden z-[70] flex items-center justify-center p-4 no-print"
+      onclick="if (event.target === this) closeLogModal();"
+    >
+      <div
+        class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
+      >
+        <div
+          class="p-4 bg-slate-900 text-white flex justify-between items-center"
+        >
+          <div>
+            <h3 class="font-black uppercase italic tracking-tighter text-sm">
+              Istoric Fișă
+            </h3>
+            <p class="text-slate-400 text-[10px] font-bold mt-0.5">
+              ID:
+              <span id="log-modal-fisa-id-display" class="text-blue-400"></span>
+            </p>
+          </div>
+          <button
+            onclick="closeLogModal()"
+            class="text-white font-black text-xl leading-none"
+          >
+            &times;
+          </button>
+        </div>
+        <div class="p-4 overflow-x-auto">
+          <table class="w-full text-left">
+            <thead
+              class="bg-slate-100 text-slate-600 uppercase text-[9px] font-black"
+            >
+              <tr>
+                <th class="p-3">Acțiune</th>
+                <th class="p-3">Data / Ora</th>
+                <th class="p-3">User</th>
+              </tr>
+            </thead>
+            <tbody id="log-rows" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+        <div class="px-4 pb-4"></div>
+      </div>
+    </div>
+    <!-- MODAL IMAGINI FIȘĂ -->
+    <div
+      id="modal-imagini"
+      class="fixed inset-0 bg-black/70 hidden z-[80] flex items-center justify-center p-4 no-print"
+      onclick="if (event.target === this) closeImaginiModal();"
+    >
+      <div
+        class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+        style="max-height: 90vh"
+      >
+        <div
+          class="p-4 bg-slate-900 text-white flex justify-between items-center flex-shrink-0"
+        >
+          <div>
+            <h3 class="font-black uppercase italic tracking-tighter text-sm">
+              Imagini Fișă
+            </h3>
+            <p class="text-slate-400 text-[10px] font-bold mt-0.5">
+              ID: <span id="imagini-modal-fisa-id" class="text-blue-400"></span>
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <label
+              class="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg font-black text-xs cursor-pointer transition active:scale-95"
+              title="Adaugă imagini noi"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                fill="white"
+                viewBox="0 0 24 24"
+              >
+                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+              </svg>
+              Adaugă
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                class="hidden"
+                onchange="handleImaginiUploadModal(event)"
+              />
+            </label>
+            <button
+              onclick="closeImaginiModal()"
+              class="text-white font-black text-xl leading-none ml-2"
+            >
+              &times;
+            </button>
+          </div>
+        </div>
+        <div class="p-4 overflow-y-auto flex-1">
+          <div id="imagini-grid" class="grid grid-cols-3 gap-3"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL IMAGINE FULLSCREEN -->
+    <div
+      id="modal-imagine-fullscreen"
+      class="fixed inset-0 bg-black/90 hidden z-[90] flex items-center justify-center no-print"
+      onclick="closeImagineFullscreen()"
+    >
+      <!-- Săgeată stânga -->
+      <button
+        id="imagine-nav-prev"
+        onclick="
+          event.stopPropagation();
+          navigateImagine(-1);
+        "
+        class="absolute left-3 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 text-white rounded-full flex items-center justify-center transition"
+        style="width: 44px; height: 44px; z-index: 10"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="22"
+          height="22"
+          fill="white"
+          viewBox="0 0 24 24"
+        >
+          <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
+        </svg>
+      </button>
+
+      <!-- Imaginea -->
+      <img
+        id="imagine-fullscreen-img"
+        src=""
+        alt="Imagine"
+        class="max-w-full max-h-full object-contain rounded-xl shadow-2xl"
+        style="max-height: 85vh; max-width: 90vw; cursor: grab"
+        onclick="event.stopPropagation()"
+      />
+
+      <!-- Săgeată dreapta -->
+      <button
+        id="imagine-nav-next"
+        onclick="
+          event.stopPropagation();
+          navigateImagine(1);
+        "
+        class="absolute right-3 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 text-white rounded-full flex items-center justify-center transition"
+        style="width: 44px; height: 44px; z-index: 10"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="22"
+          height="22"
+          fill="white"
+          viewBox="0 0 24 24"
+        >
+          <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
+        </svg>
+      </button>
+
+      <!-- Bara de sus: counter + butoane zoom + închide -->
+      <div
+        class="absolute top-3 left-0 right-0 flex items-center justify-between px-4"
+        onclick="event.stopPropagation()"
+      >
+        <span
+          id="imagine-fullscreen-counter"
+          class="text-white font-black text-sm bg-black/40 px-3 py-1 rounded-full"
+        ></span>
+        <div class="flex items-center gap-2">
+          <button
+            onclick="zoomImagine(-1)"
+            class="bg-white/20 hover:bg-white/40 text-white font-black text-lg rounded-full flex items-center justify-center transition"
+            style="width: 36px; height: 36px"
+            title="Zoom out (-)"
+          >
+            −
+          </button>
+          <button
+            onclick="zoomImagine(1)"
+            class="bg-white/20 hover:bg-white/40 text-white font-black text-lg rounded-full flex items-center justify-center transition"
+            style="width: 36px; height: 36px"
+            title="Zoom in (+)"
+          >
+            +
+          </button>
+          <button
+            onclick="closeImagineFullscreen()"
+            class="bg-white/20 hover:bg-white/40 text-white font-black text-xl rounded-full flex items-center justify-center transition ml-1"
+            style="width: 36px; height: 36px"
+          >
+            &times;
+          </button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
