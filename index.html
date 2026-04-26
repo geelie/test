@@ -1295,7 +1295,7 @@
         <div class="flex items-center justify-center gap-1">
             <button
                 type="button"
-                class="factura-btn flex items-center justify-center bg-slate-600 hover:bg-blue-700 text-white rounded-lg transition active:scale-95"
+                class="factura-btn flex items-center justify-center bg-slate-400 hover:bg-blue-700 text-white rounded-lg transition active:scale-95"
                 style="width:28px;height:28px;padding:0;flex-shrink:0;"
                 title="Adaugă / Înlocuiește factură"
                 onclick="event.stopPropagation(); triggerFacturaUploadRow('${f.id}', this)">
@@ -1303,7 +1303,7 @@
             </button>
             <button
                 type="button"
-                class="factura-btn flex items-center justify-center rounded-lg transition active:scale-95 ${f.factura_path ? "bg-slate-600 hover:bg-blue-700 text-white cursor-pointer" : "bg-slate-200 text-slate-400 cursor-not-allowed"}"
+                class="factura-btn flex items-center justify-center rounded-lg transition active:scale-95 ${f.factura_path ? "bg-slate-900 hover:bg-blue-700 text-white cursor-pointer" : "bg-slate-200 text-slate-400 cursor-not-allowed"}"
                 style="width:28px;height:28px;padding:0;flex-shrink:0;"
                 title="${f.factura_path ? "Vizualizează factura" : "Nicio factură atașată"}"
                 ${f.factura_path ? `onclick="event.stopPropagation(); viewFacturaRow('${f.factura_path}')"` : 'disabled onclick="event.stopPropagation()"'}>
@@ -1311,7 +1311,7 @@
             </button>
             <button
                 type="button"
-                class="factura-btn flex items-center justify-center rounded-lg transition active:scale-95 ${f.factura_path ? "bg-red-600 hover:bg-red-700 text-white cursor-pointer" : "bg-slate-200 text-slate-400 cursor-not-allowed"}"
+                class="factura-btn flex items-center justify-center rounded-lg transition active:scale-95 ${f.factura_path ? "bg-red-400 hover:bg-red-700 text-white cursor-pointer" : "bg-slate-200 text-slate-400 cursor-not-allowed"}"
                 style="width:28px;height:28px;padding:0;flex-shrink:0;"
                 title="${f.factura_path ? "Șterge factura" : "Nicio factură atașată"}"
                 ${f.factura_path ? `onclick="event.stopPropagation(); deleteFacturaRow('${f.id}', '${f.factura_path}', this)"` : 'disabled onclick="event.stopPropagation()"'}>
@@ -1326,32 +1326,40 @@
       activeUser.rol === "admin" || activeUser.rol === "user"
         ? `<td class="p-2 border-r border-slate-300 text-center align-middle" onclick="event.stopPropagation()">
         <div class="flex items-center justify-center gap-1">
-            ${activeUser.rol === "admin" || f.status !== "Finalizat" ? `<button
+            ${
+              activeUser.rol === "admin" || f.status !== "Finalizat"
+                ? `<button
                 type="button"
-                class="imagini-btn flex items-center justify-center bg-slate-600 hover:bg-blue-700 text-white rounded-lg transition active:scale-95"
+                class="imagini-btn flex items-center justify-center bg-slate-400 hover:bg-blue-700 text-white rounded-lg transition active:scale-95"
                 style="width:28px;height:28px;padding:0;flex-shrink:0;"
                 title="Adaugă imagini"
                 onclick="triggerImaginiUpload('${f.id}', this)">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="white" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-            </button>` : `<button type="button" disabled
+            </button>`
+                : `<button type="button" disabled
                 class="imagini-btn flex items-center justify-center bg-slate-200 text-slate-400 cursor-not-allowed rounded-lg"
                 style="width:28px;height:28px;padding:0;flex-shrink:0;"
                 title="Fișa finalizată — adăugare blocată">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-            </button>`}
-            ${activeUser.rol === "admin" || f.status !== "Finalizat" ? `<button
+            </button>`
+            }
+            ${
+              activeUser.rol === "admin" || f.status !== "Finalizat"
+                ? `<button
                 type="button"
-                class="imagini-btn flex items-center justify-center rounded-lg transition active:scale-95 ${f.imagini_count > 0 ? 'bg-slate-900 hover:bg-slate-700 text-white cursor-pointer' : 'bg-slate-600 hover:bg-blue-700 text-white cursor-pointer'}"
+                class="imagini-btn flex items-center justify-center rounded-lg transition active:scale-95 ${f.imagini_count > 0 ? "bg-slate-900 hover:bg-slate-700 text-white cursor-pointer" : "bg-slate-400 hover:bg-blue-700 text-white cursor-pointer"}"
                 style="width:28px;height:28px;padding:0;flex-shrink:0;"
-                title="${f.imagini_count > 0 ? `Vezi imagini (${f.imagini_count})` : 'Vezi imagini'}"
+                title="${f.imagini_count > 0 ? `Vezi imagini (${f.imagini_count})` : "Vezi imagini"}"
                 onclick="openImaginiModal('${f.id}')">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
-            </button>` : `<button type="button" disabled
+            </button>`
+                : `<button type="button" disabled
                 class="imagini-btn flex items-center justify-center bg-slate-200 text-slate-400 cursor-not-allowed rounded-lg"
                 style="width:28px;height:28px;padding:0;flex-shrink:0;"
                 title="Fișa finalizată — vizualizare blocată">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
-            </button>`}
+            </button>`
+            }
             <input type="file" accept="image/*" multiple class="hidden imagini-row-input" onchange="handleImaginiUpload(event, '${f.id}', this)">
         </div>
     </td>`
@@ -3103,21 +3111,32 @@
         if (!files.length) return;
 
         const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-        const invalid = files.filter(f => !allowed.includes(f.type));
+        const invalid = files.filter((f) => !allowed.includes(f.type));
         if (invalid.length) {
-          alert("Tip fișier neacceptat. Folosiți doar imagini (JPG, PNG, WEBP, GIF).");
+          alert(
+            "Tip fișier neacceptat. Folosiți doar imagini (JPG, PNG, WEBP, GIF).",
+          );
           inputEl.value = "";
           return;
         }
-        const tooBig = files.filter(f => f.size > 10 * 1024 * 1024);
+        const tooBig = files.filter((f) => f.size > 10 * 1024 * 1024);
         if (tooBig.length) {
-          alert(`${tooBig.length} fișier(e) depășesc 10 MB și nu vor fi încărcate.`);
+          alert(
+            `${tooBig.length} fișier(e) depășesc 10 MB și nu vor fi încărcate.`,
+          );
         }
-        const validFiles = files.filter(f => allowed.includes(f.type) && f.size <= 10 * 1024 * 1024);
-        if (!validFiles.length) { inputEl.value = ""; return; }
+        const validFiles = files.filter(
+          (f) => allowed.includes(f.type) && f.size <= 10 * 1024 * 1024,
+        );
+        if (!validFiles.length) {
+          inputEl.value = "";
+          return;
+        }
 
         // Animație pe butonul +
-        const addBtn = inputEl.closest("td").querySelector("button:first-of-type");
+        const addBtn = inputEl
+          .closest("td")
+          .querySelector("button:first-of-type");
         const origIcon = addBtn ? addBtn.innerHTML : "";
         if (addBtn) {
           addBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="white" viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>`;
@@ -3127,10 +3146,13 @@
         let uploaded = 0;
         for (const file of validFiles) {
           const ext = file.name.split(".").pop().toLowerCase();
-          const storagePath = `${fisaId}/img_${Date.now()}_${Math.random().toString(36).slice(2,7)}.${ext}`;
+          const storagePath = `${fisaId}/img_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.${ext}`;
           const { error } = await _supa.storage
             .from("imagini-fise")
-            .upload(storagePath, file, { upsert: false, contentType: file.type });
+            .upload(storagePath, file, {
+              upsert: false,
+              contentType: file.type,
+            });
           if (!error) uploaded++;
         }
 
@@ -3142,11 +3164,17 @@
 
         if (uploaded > 0) {
           // Incrementează imagini_count în DB
-          await _supa.rpc("increment_imagini_count", { fisa_id: fisaId, delta: uploaded });
+          await _supa.rpc("increment_imagini_count", {
+            fisa_id: fisaId,
+            delta: uploaded,
+          });
           // Actualizează culoarea butonului 🖼 direct în DOM
-          const viewBtn = inputEl.closest("td").querySelector("button:nth-of-type(2)");
+          const viewBtn = inputEl
+            .closest("td")
+            .querySelector("button:nth-of-type(2)");
           if (viewBtn) {
-            viewBtn.className = "imagini-btn flex items-center justify-center rounded-lg transition active:scale-95 bg-slate-900 hover:bg-slate-700 text-white cursor-pointer";
+            viewBtn.className =
+              "imagini-btn flex items-center justify-center rounded-lg transition active:scale-95 bg-slate-900 hover:bg-slate-700 text-white cursor-pointer";
             viewBtn.title = `Vezi imagini`;
           }
           alert(`${uploaded} imagine(i) încărcate cu succes.`);
@@ -3173,7 +3201,9 @@
       async function loadImaginiGrid(fisaId) {
         const { data, error } = await _supa.storage
           .from("imagini-fise")
-          .list(fisaId + "/", { sortBy: { column: "created_at", order: "asc" } });
+          .list(fisaId + "/", {
+            sortBy: { column: "created_at", order: "asc" },
+          });
 
         const grid = document.getElementById("imagini-grid");
 
@@ -3183,30 +3213,36 @@
         }
 
         // Salvează URL-urile pentru navigare fullscreen
-        _imaginiUrls = data.map(item => {
+        _imaginiUrls = data.map((item) => {
           const { data: urlData } = _supa.storage
             .from("imagini-fise")
             .getPublicUrl(`${fisaId}/${item.name}`);
           return urlData.publicUrl;
         });
 
-        grid.innerHTML = data.map((item, idx) => {
-          const url = _imaginiUrls[idx];
-          const canDelete = activeUser.rol === "admin";
-          return `<div class="relative group rounded-xl overflow-hidden border-2 border-slate-200 bg-slate-100" style="aspect-ratio:1;">
-            <img src="${url}" alt="Imagine ${idx+1}"
+        grid.innerHTML = data
+          .map((item, idx) => {
+            const url = _imaginiUrls[idx];
+            const canDelete = activeUser.rol === "admin";
+            return `<div class="relative group rounded-xl overflow-hidden border-2 border-slate-200 bg-slate-100" style="aspect-ratio:1;">
+            <img src="${url}" alt="Imagine ${idx + 1}"
               class="w-full h-full object-cover cursor-pointer hover:opacity-90 transition"
               onclick="openImagineFullscreen(${idx})"
               onerror="this.parentElement.innerHTML='<div class=\'flex items-center justify-center h-full text-slate-400 text-xs font-bold\'>Eroare</div>'">
-            ${canDelete ? `<button
+            ${
+              canDelete
+                ? `<button
               onclick="deleteImagine('${fisaId}', '${item.name}', this)"
               class="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
               style="width:22px;height:22px;padding:0;"
               title="Șterge imaginea">
               <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-            </button>` : ""}
+            </button>`
+                : ""
+            }
           </div>`;
-        }).join("");
+          })
+          .join("");
       }
 
       let _imaginiUrls = [];
@@ -3217,7 +3253,9 @@
         _imaginiCurrentIdx = idx;
         _imaginiZoom = 1;
         _renderFullscreen();
-        document.getElementById("modal-imagine-fullscreen").classList.remove("hidden");
+        document
+          .getElementById("modal-imagine-fullscreen")
+          .classList.remove("hidden");
       }
 
       function _renderFullscreen() {
@@ -3227,12 +3265,17 @@
         img.style.transition = "transform 0.2s ease";
         // Counter
         const counter = document.getElementById("imagine-fullscreen-counter");
-        if (counter) counter.textContent = `${_imaginiCurrentIdx + 1} / ${_imaginiUrls.length}`;
+        if (counter)
+          counter.textContent = `${_imaginiCurrentIdx + 1} / ${_imaginiUrls.length}`;
         // Săgeți
         const btnPrev = document.getElementById("imagine-nav-prev");
         const btnNext = document.getElementById("imagine-nav-next");
-        if (btnPrev) btnPrev.style.visibility = _imaginiCurrentIdx > 0 ? "visible" : "hidden";
-        if (btnNext) btnNext.style.visibility = _imaginiCurrentIdx < _imaginiUrls.length - 1 ? "visible" : "hidden";
+        if (btnPrev)
+          btnPrev.style.visibility =
+            _imaginiCurrentIdx > 0 ? "visible" : "hidden";
+        if (btnNext)
+          btnNext.style.visibility =
+            _imaginiCurrentIdx < _imaginiUrls.length - 1 ? "visible" : "hidden";
       }
 
       function navigateImagine(dir) {
@@ -3250,20 +3293,36 @@
       }
 
       function closeImagineFullscreen() {
-        document.getElementById("modal-imagine-fullscreen").classList.add("hidden");
+        document
+          .getElementById("modal-imagine-fullscreen")
+          .classList.add("hidden");
         document.getElementById("imagine-fullscreen-img").src = "";
         _imaginiZoom = 1;
       }
 
       // Listener tastatură pentru fullscreen
-      document.addEventListener("keydown", function(e) {
+      document.addEventListener("keydown", function (e) {
         const modal = document.getElementById("modal-imagine-fullscreen");
         if (!modal || modal.classList.contains("hidden")) return;
-        if (e.key === "ArrowLeft")  { e.preventDefault(); navigateImagine(-1); }
-        if (e.key === "ArrowRight") { e.preventDefault(); navigateImagine(1); }
-        if (e.key === "+" || e.key === "=") { e.preventDefault(); zoomImagine(1); }
-        if (e.key === "-")          { e.preventDefault(); zoomImagine(-1); }
-        if (e.key === "Escape")     { closeImagineFullscreen(); }
+        if (e.key === "ArrowLeft") {
+          e.preventDefault();
+          navigateImagine(-1);
+        }
+        if (e.key === "ArrowRight") {
+          e.preventDefault();
+          navigateImagine(1);
+        }
+        if (e.key === "+" || e.key === "=") {
+          e.preventDefault();
+          zoomImagine(1);
+        }
+        if (e.key === "-") {
+          e.preventDefault();
+          zoomImagine(-1);
+        }
+        if (e.key === "Escape") {
+          closeImagineFullscreen();
+        }
       });
 
       async function deleteImagine(fisaId, fileName, btn) {
@@ -3277,7 +3336,10 @@
         }
         // Elimină cardul din grid
         btn.closest(".relative").remove();
-        await _supa.rpc("increment_imagini_count", { fisa_id: fisaId, delta: -1 });
+        await _supa.rpc("increment_imagini_count", {
+          fisa_id: fisaId,
+          delta: -1,
+        });
         // Dacă grila e goală, afișează mesaj
         const grid = document.getElementById("imagini-grid");
         if (!grid.querySelector(".relative")) {
@@ -3290,15 +3352,19 @@
           .eq("id", fisaId)
           .maybeSingle();
         const newCount = fisaData?.imagini_count ?? 0;
-        const tr = document.querySelector(`#fise-rows tr[data-fisa-id="${fisaId}"]`);
+        const tr = document.querySelector(
+          `#fise-rows tr[data-fisa-id="${fisaId}"]`,
+        );
         if (tr) {
           const viewBtn = tr.querySelector(".imagini-btn:nth-of-type(2)");
           if (viewBtn) {
             if (newCount > 0) {
-              viewBtn.className = "imagini-btn flex items-center justify-center rounded-lg transition active:scale-95 bg-slate-900 hover:bg-slate-700 text-white cursor-pointer";
+              viewBtn.className =
+                "imagini-btn flex items-center justify-center rounded-lg transition active:scale-95 bg-slate-900 hover:bg-slate-700 text-white cursor-pointer";
               viewBtn.title = `Vezi imagini (${newCount})`;
             } else {
-              viewBtn.className = "imagini-btn flex items-center justify-center rounded-lg transition active:scale-95 bg-slate-600 hover:bg-blue-700 text-white cursor-pointer";
+              viewBtn.className =
+                "imagini-btn flex items-center justify-center rounded-lg transition active:scale-95 bg-slate-600 hover:bg-blue-700 text-white cursor-pointer";
               viewBtn.title = "Vezi imagini";
             }
           }
@@ -3310,9 +3376,13 @@
         if (!files.length || !_imaginiCurrentFisaId) return;
 
         const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-        const validFiles = files.filter(f => allowed.includes(f.type) && f.size <= 10 * 1024 * 1024);
+        const validFiles = files.filter(
+          (f) => allowed.includes(f.type) && f.size <= 10 * 1024 * 1024,
+        );
         if (!validFiles.length) {
-          alert("Niciun fișier valid. Folosiți imagini JPG/PNG/WEBP/GIF sub 10 MB.");
+          alert(
+            "Niciun fișier valid. Folosiți imagini JPG/PNG/WEBP/GIF sub 10 MB.",
+          );
           event.target.value = "";
           return;
         }
@@ -3325,10 +3395,13 @@
         let uploaded = 0;
         for (const file of validFiles) {
           const ext = file.name.split(".").pop().toLowerCase();
-          const storagePath = `${_imaginiCurrentFisaId}/img_${Date.now()}_${Math.random().toString(36).slice(2,7)}.${ext}`;
+          const storagePath = `${_imaginiCurrentFisaId}/img_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.${ext}`;
           const { error } = await _supa.storage
             .from("imagini-fise")
-            .upload(storagePath, file, { upsert: false, contentType: file.type });
+            .upload(storagePath, file, {
+              upsert: false,
+              contentType: file.type,
+            });
           if (!error) {
             uploaded++;
             // Adaugă imaginea direct în grid fără reload
@@ -3341,20 +3414,25 @@
             _imaginiUrls.push(url);
             const newIdx = _imaginiUrls.length - 1;
             const card = document.createElement("div");
-            card.className = "relative group rounded-xl overflow-hidden border-2 border-slate-200 bg-slate-100";
+            card.className =
+              "relative group rounded-xl overflow-hidden border-2 border-slate-200 bg-slate-100";
             card.style.aspectRatio = "1";
             card.innerHTML = `
               <img src="${url}" alt="Imagine"
                 class="w-full h-full object-cover cursor-pointer hover:opacity-90 transition"
                 onclick="openImagineFullscreen(${newIdx})"
                 onerror="this.parentElement.innerHTML='<div class=\\'flex items-center justify-center h-full text-slate-400 text-xs font-bold\\'>Eroare</div>'">
-              ${canDelete ? `<button
+              ${
+                canDelete
+                  ? `<button
                 onclick="deleteImagine('${_imaginiCurrentFisaId}', '${fileName}', this)"
                 class="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                 style="width:22px;height:22px;padding:0;"
                 title="Șterge imaginea">
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-              </button>` : ""}`;
+              </button>`
+                  : ""
+              }`;
             grid.appendChild(card);
           }
         }
@@ -3363,7 +3441,10 @@
         if (uploaded === 0) {
           alert("Nicio imagine nu a putut fi încărcată.");
         } else {
-          await _supa.rpc("increment_imagini_count", { fisa_id: _imaginiCurrentFisaId, delta: uploaded });
+          await _supa.rpc("increment_imagini_count", {
+            fisa_id: _imaginiCurrentFisaId,
+            delta: uploaded,
+          });
         }
       }
 
@@ -3374,13 +3455,20 @@
       let _realtimeChannel = null;
 
       function _isListTabActive() {
-        return document.getElementById("tab-list")?.classList.contains("active");
+        return document
+          .getElementById("tab-list")
+          ?.classList.contains("active");
       }
 
       function _hasOpenModal() {
-        const modals = ["modal-view", "modal-log", "modal-imagini",
-                        "modal-imagine-fullscreen", "modal-archive"];
-        return modals.some(id => {
+        const modals = [
+          "modal-view",
+          "modal-log",
+          "modal-imagini",
+          "modal-imagine-fullscreen",
+          "modal-archive",
+        ];
+        return modals.some((id) => {
           const el = document.getElementById(id);
           return el && !el.classList.contains("hidden");
         });
@@ -3400,7 +3488,8 @@
         if (_realtimeChannel) return;
         _realtimeChannel = _supa
           .channel("fise-changes")
-          .on("postgres_changes",
+          .on(
+            "postgres_changes",
             { event: "*", schema: "public", table: "fise" },
             () => {
               if (_isListTabActive() && !_hasOpenModal()) {
@@ -3408,7 +3497,7 @@
               } else {
                 _realtimePending = true;
               }
-            }
+            },
           )
           .subscribe();
       }
@@ -3635,20 +3724,52 @@
     <div
       id="modal-imagini"
       class="fixed inset-0 bg-black/70 hidden z-[80] flex items-center justify-center p-4 no-print"
-      onclick="if(event.target===this) closeImaginiModal()">
-      <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col" style="max-height:90vh;">
-        <div class="p-4 bg-slate-900 text-white flex justify-between items-center flex-shrink-0">
+      onclick="if (event.target === this) closeImaginiModal();"
+    >
+      <div
+        class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+        style="max-height: 90vh"
+      >
+        <div
+          class="p-4 bg-slate-900 text-white flex justify-between items-center flex-shrink-0"
+        >
           <div>
-            <h3 class="font-black uppercase italic tracking-tighter text-sm">Imagini Fișă</h3>
-            <p class="text-slate-400 text-[10px] font-bold mt-0.5">ID: <span id="imagini-modal-fisa-id" class="text-blue-400"></span></p>
+            <h3 class="font-black uppercase italic tracking-tighter text-sm">
+              Imagini Fișă
+            </h3>
+            <p class="text-slate-400 text-[10px] font-bold mt-0.5">
+              ID: <span id="imagini-modal-fisa-id" class="text-blue-400"></span>
+            </p>
           </div>
           <div class="flex items-center gap-2">
-            <label class="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg font-black text-xs cursor-pointer transition active:scale-95" title="Adaugă imagini noi">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="white" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            <label
+              class="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg font-black text-xs cursor-pointer transition active:scale-95"
+              title="Adaugă imagini noi"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                fill="white"
+                viewBox="0 0 24 24"
+              >
+                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+              </svg>
               Adaugă
-              <input type="file" accept="image/*" multiple class="hidden" onchange="handleImaginiUploadModal(event)">
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                class="hidden"
+                onchange="handleImaginiUploadModal(event)"
+              />
             </label>
-            <button onclick="closeImaginiModal()" class="text-white font-black text-xl leading-none ml-2">&times;</button>
+            <button
+              onclick="closeImaginiModal()"
+              class="text-white font-black text-xl leading-none ml-2"
+            >
+              &times;
+            </button>
           </div>
         </div>
         <div class="p-4 overflow-y-auto flex-1">
@@ -3661,46 +3782,95 @@
     <div
       id="modal-imagine-fullscreen"
       class="fixed inset-0 bg-black/90 hidden z-[90] flex items-center justify-center no-print"
-      onclick="closeImagineFullscreen()">
-
+      onclick="closeImagineFullscreen()"
+    >
       <!-- Săgeată stânga -->
-      <button id="imagine-nav-prev"
-        onclick="event.stopPropagation(); navigateImagine(-1)"
+      <button
+        id="imagine-nav-prev"
+        onclick="
+          event.stopPropagation();
+          navigateImagine(-1);
+        "
         class="absolute left-3 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 text-white rounded-full flex items-center justify-center transition"
-        style="width:44px;height:44px;z-index:10;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="white" viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+        style="width: 44px; height: 44px; z-index: 10"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="22"
+          height="22"
+          fill="white"
+          viewBox="0 0 24 24"
+        >
+          <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
+        </svg>
       </button>
 
       <!-- Imaginea -->
-      <img id="imagine-fullscreen-img" src="" alt="Imagine"
+      <img
+        id="imagine-fullscreen-img"
+        src=""
+        alt="Imagine"
         class="max-w-full max-h-full object-contain rounded-xl shadow-2xl"
-        style="max-height:85vh; max-width:90vw; cursor:grab;"
-        onclick="event.stopPropagation()">
+        style="max-height: 85vh; max-width: 90vw; cursor: grab"
+        onclick="event.stopPropagation()"
+      />
 
       <!-- Săgeată dreapta -->
-      <button id="imagine-nav-next"
-        onclick="event.stopPropagation(); navigateImagine(1)"
+      <button
+        id="imagine-nav-next"
+        onclick="
+          event.stopPropagation();
+          navigateImagine(1);
+        "
         class="absolute right-3 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 text-white rounded-full flex items-center justify-center transition"
-        style="width:44px;height:44px;z-index:10;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="white" viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+        style="width: 44px; height: 44px; z-index: 10"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="22"
+          height="22"
+          fill="white"
+          viewBox="0 0 24 24"
+        >
+          <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
+        </svg>
       </button>
 
       <!-- Bara de sus: counter + butoane zoom + închide -->
-      <div class="absolute top-3 left-0 right-0 flex items-center justify-between px-4" onclick="event.stopPropagation()">
-        <span id="imagine-fullscreen-counter" class="text-white font-black text-sm bg-black/40 px-3 py-1 rounded-full"></span>
+      <div
+        class="absolute top-3 left-0 right-0 flex items-center justify-between px-4"
+        onclick="event.stopPropagation()"
+      >
+        <span
+          id="imagine-fullscreen-counter"
+          class="text-white font-black text-sm bg-black/40 px-3 py-1 rounded-full"
+        ></span>
         <div class="flex items-center gap-2">
-          <button onclick="zoomImagine(-1)"
+          <button
+            onclick="zoomImagine(-1)"
             class="bg-white/20 hover:bg-white/40 text-white font-black text-lg rounded-full flex items-center justify-center transition"
-            style="width:36px;height:36px;" title="Zoom out (-)">−</button>
-          <button onclick="zoomImagine(1)"
+            style="width: 36px; height: 36px"
+            title="Zoom out (-)"
+          >
+            −
+          </button>
+          <button
+            onclick="zoomImagine(1)"
             class="bg-white/20 hover:bg-white/40 text-white font-black text-lg rounded-full flex items-center justify-center transition"
-            style="width:36px;height:36px;" title="Zoom in (+)">+</button>
-          <button onclick="closeImagineFullscreen()"
+            style="width: 36px; height: 36px"
+            title="Zoom in (+)"
+          >
+            +
+          </button>
+          <button
+            onclick="closeImagineFullscreen()"
             class="bg-white/20 hover:bg-white/40 text-white font-black text-xl rounded-full flex items-center justify-center transition ml-1"
-            style="width:36px;height:36px;">&times;</button>
+            style="width: 36px; height: 36px"
+          >
+            &times;
+          </button>
         </div>
       </div>
-
     </div>
   </body>
 </html>
