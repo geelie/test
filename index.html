@@ -307,16 +307,16 @@
         <button
           onclick="switchTab('tab-add')"
           id="btn-add"
-          class="hidden flex-shrink-0 px-6 md:px-8 py-4 font-black text-slate-500 hover:text-blue-600 transition text-sm md:text-base"
+          class="hidden flex-shrink-0 px-6 md:px-8 py-4 font-black text-slate-500 hover:text-blue-600 text-sm md:text-base"
         >
           ADĂUGARE / EDITARE
         </button>
         <button
           onclick="switchTab('tab-users')"
           id="btn-users"
-          class="hidden flex-shrink-0 px-6 md:px-8 py-4 font-black text-slate-500 hover:text-blue-600 transition text-sm md:text-base uppercase"
+          class="hidden flex-shrink-0 px-6 md:px-8 py-4 font-black text-slate-500 hover:text-blue-600 transition text-sm md:text-base"
         >
-          Utilizatori
+          UTILIZATORI
         </button>
       </div>
 
@@ -788,101 +788,7 @@
                     class="w-full sm:w-[45%] p-3 border-2 border-slate-200 rounded-lg text-xs font-bold"
                   />
                 </div>
-                <div>
-                  <label
-                    class="text-[9px] font-black text-slate-800 uppercase ml-1"
-                    >Adaugă / Vezi Factură</label
-                  >
-                  <div class="flex items-center gap-2 mt-1">
-                    <input
-                      type="file"
-                      id="factura-file-input"
-                      accept="image/*,application/pdf"
-                      class="hidden"
-                      onchange="handleFacturaFileSelected()"
-                    />
-                    <button
-                      type="button"
-                      id="factura-upload-btn"
-                      onclick="
-                        document.getElementById('factura-file-input').click()
-                      "
-                      title="Adaugă factură (imagine sau PDF)"
-                      class="flex items-center justify-center gap-1 bg-slate-600 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded-md font-semibold text-xs transition active:scale-95"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="13"
-                        height="13"
-                        fill="white"
-                        viewBox="0 0 24 24"
-                      >
-                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
-                      </svg>
-                      Adaugă
-                    </button>
-                    <button
-                      type="button"
-                      id="factura-view-btn"
-                      onclick="viewFactura()"
-                      title="Vizualizează factura salvată"
-                      class="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-md font-semibold text-xs transition active:scale-95 bg-slate-200 text-slate-400 cursor-not-allowed"
-                      disabled
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="13"
-                        height="13"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                      >
-                        <path
-                          d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zm0 12.5c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"
-                        />
-                      </svg>
-                      Vezi
-                    </button>
-                    <button
-                      type="button"
-                      id="factura-delete-btn"
-                      onclick="deleteFactura()"
-                      title="Șterge factura atașată"
-                      class="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-md font-semibold text-xs transition active:scale-95 bg-slate-200 text-slate-400 cursor-not-allowed"
-                      disabled
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="13"
-                        height="13"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                      >
-                        <path
-                          d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
-                        />
-                      </svg>
-                      Șterge
-                    </button>
-                    <span
-                      id="factura-status-text"
-                      class="text-[10px] font-black text-slate-400 italic"
-                    ></span>
-                  </div>
-                  <div id="factura-upload-progress" class="hidden mt-2">
-                    <div class="w-full bg-slate-200 rounded-full h-1.5">
-                      <div
-                        id="factura-progress-bar"
-                        class="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
-                        style="width: 0%"
-                      ></div>
-                    </div>
-                    <p
-                      class="text-[9px] font-black text-blue-700 mt-1 uppercase tracking-wider"
-                    >
-                      Se încarcă...
-                    </p>
-                  </div>
-                </div>
+
                 <div>
                   <label
                     class="text-[9px] font-black text-slate-800 uppercase ml-1"
@@ -2709,29 +2615,32 @@
 
       function resetFacturaUI() {
         _currentFacturaPath = null;
-        document.getElementById("factura-file-input").value = "";
-        document.getElementById("factura-status-text").textContent = "";
-        document
-          .getElementById("factura-upload-progress")
-          .classList.add("hidden");
-        document.getElementById("factura-progress-bar").style.width = "0%";
+        const fi = document.getElementById("factura-file-input");
+        if (fi) fi.value = "";
+        const st = document.getElementById("factura-status-text");
+        if (st) st.textContent = "";
+        const prog = document.getElementById("factura-upload-progress");
+        if (prog) prog.classList.add("hidden");
+        const bar = document.getElementById("factura-progress-bar");
+        if (bar) bar.style.width = "0%";
         _setFacturaViewBtn(false);
       }
 
       function refreshFacturaUI(path) {
         _currentFacturaPath = path || null;
+        const st = document.getElementById("factura-status-text");
         if (_currentFacturaPath) {
           const fileName = _currentFacturaPath.split("/").pop();
-          document.getElementById("factura-status-text").textContent =
-            "✓ " + fileName;
-          document.getElementById("factura-status-text").className =
-            "text-[10px] font-black text-green-700 italic";
+          if (st) {
+            st.textContent = "✓ " + fileName;
+            st.className = "text-[10px] font-black text-green-700 italic";
+          }
           _setFacturaViewBtn(true);
         } else {
-          document.getElementById("factura-status-text").textContent =
-            "Nicio factură atașată";
-          document.getElementById("factura-status-text").className =
-            "text-[10px] font-black text-slate-400 italic";
+          if (st) {
+            st.textContent = "Nicio factură atașată";
+            st.className = "text-[10px] font-black text-slate-400 italic";
+          }
           _setFacturaViewBtn(false);
         }
       }
@@ -2739,6 +2648,7 @@
       function _setFacturaViewBtn(active) {
         const btnView = document.getElementById("factura-view-btn");
         const btnDelete = document.getElementById("factura-delete-btn");
+        if (!btnView || !btnDelete) return;
         if (active) {
           btnView.disabled = false;
           btnView.className =
@@ -2799,15 +2709,15 @@
         // Afișare progress
         const progressWrap = document.getElementById("factura-upload-progress");
         const progressBar = document.getElementById("factura-progress-bar");
-        progressWrap.classList.remove("hidden");
-        progressBar.style.width = "30%";
+        if (progressWrap) progressWrap.classList.remove("hidden");
+        if (progressBar) progressBar.style.width = "30%";
 
         // Dacă există deja un fișier vechi, îl ștergem mai întâi
         if (_currentFacturaPath) {
           await _supa.storage.from("facturi").remove([_currentFacturaPath]);
         }
 
-        progressBar.style.width = "60%";
+        if (progressBar) progressBar.style.width = "60%";
 
         // Upload în Supabase Storage
         const { error: uploadError } = await _supa.storage
@@ -2815,14 +2725,14 @@
           .upload(storagePath, file, { upsert: true, contentType: file.type });
 
         if (uploadError) {
-          progressWrap.classList.add("hidden");
-          progressBar.style.width = "0%";
+          if (progressWrap) progressWrap.classList.add("hidden");
+          if (progressBar) progressBar.style.width = "0%";
           input.value = "";
           alert("Eroare la încărcare: " + uploadError.message);
           return;
         }
 
-        progressBar.style.width = "90%";
+        if (progressBar) progressBar.style.width = "90%";
 
         // Salvare cale în baza de date
         const { error: dbError } = await _supa
@@ -2830,7 +2740,7 @@
           .update({ factura_path: storagePath })
           .eq("id", editId);
 
-        progressBar.style.width = "100%";
+        if (progressBar) progressBar.style.width = "100%";
 
         if (dbError) {
           alert(
@@ -2857,8 +2767,8 @@
         }
 
         setTimeout(() => {
-          progressWrap.classList.add("hidden");
-          progressBar.style.width = "0%";
+          if (progressWrap) progressWrap.classList.add("hidden");
+          if (progressBar) progressBar.style.width = "0%";
         }, 800);
 
         input.value = "";
