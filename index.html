@@ -1246,7 +1246,7 @@
           activeUser.rol === "admin" || activeUser.service === "RIDICARE"
             ? `<td class="p-4 font-black text-[10px] ${transportStyle}">${f.tip_transport || ""}</td>`
             : "";
-        return `<tr onclick='if(!event.target.closest(".log-btn") && !event.target.closest(".factura-btn") && !event.target.closest(".imagini-btn")) openFisa(${JSON.stringify(f)})' class="border-b border-slate-300 hover:bg-slate-50 cursor-pointer transition-colors">
+        return `<tr data-fisa-id="${f.id}" onclick='if(!event.target.closest(".log-btn") && !event.target.closest(".factura-btn") && !event.target.closest(".imagini-btn")) openFisa(${JSON.stringify(f)})' class="border-b border-slate-300 hover:bg-slate-50 cursor-pointer transition-colors">
         ${activeUser.rol === "admin" || activeUser.rol === "user" ? `<td class="p-4 border-r border-slate-300 font-black text-slate-400 text-xs whitespace-nowrap">${globalNrCrt}${!f.data_preluare_fizica ? `<sup style="display:inline-block;width:7px;height:7px;background:#ef4444;border-radius:50%;margin-left:3px;vertical-align:super;line-height:1;" title="Lipsă Data Predării Fizice"></sup>` : ""}</td>` : ""}
 
     <td class="p-4 border-r border-slate-300 font-mono font-black text-blue-700 text-xs">
@@ -3282,6 +3282,26 @@
         const grid = document.getElementById("imagini-grid");
         if (!grid.querySelector(".relative")) {
           grid.innerHTML = `<p class="text-slate-400 text-xs font-bold col-span-3 text-center py-8">Nicio imagine atașată acestei fișe.</p>`;
+        }
+        // Actualizează butonul de vizualizare imagini din tabel direct în DOM
+        const { data: fisaData } = await _supa
+          .from("fise")
+          .select("imagini_count")
+          .eq("id", fisaId)
+          .maybeSingle();
+        const newCount = fisaData?.imagini_count ?? 0;
+        const tr = document.querySelector(`#fise-rows tr[data-fisa-id="${fisaId}"]`);
+        if (tr) {
+          const viewBtn = tr.querySelector(".imagini-btn:nth-of-type(2)");
+          if (viewBtn) {
+            if (newCount > 0) {
+              viewBtn.className = "imagini-btn flex items-center justify-center rounded-lg transition active:scale-95 bg-slate-900 hover:bg-slate-700 text-white cursor-pointer";
+              viewBtn.title = `Vezi imagini (${newCount})`;
+            } else {
+              viewBtn.className = "imagini-btn flex items-center justify-center rounded-lg transition active:scale-95 bg-slate-600 hover:bg-blue-700 text-white cursor-pointer";
+              viewBtn.title = "Vezi imagini";
+            }
+          }
         }
       }
 
