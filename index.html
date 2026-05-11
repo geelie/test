@@ -915,6 +915,7 @@
 
       let activeUser = null;
       let currentFisa = null;
+      const _fisaMap = new Map();
 
       function getRoTime() {
         const now = new Date();
@@ -1152,7 +1153,7 @@
           activeUser.rol === "admin" || activeUser.service === "RIDICARE"
             ? `<td class="p-4 font-black text-[10px] ${transportStyle}">${f.tip_transport || ""}</td>`
             : "";
-        return `<tr data-fisa-id="${f.id}" onclick='if(!event.target.closest(".log-btn") && !event.target.closest(".factura-btn") && !event.target.closest(".imagini-btn")) openFisa(${JSON.stringify(f)})' class="border-b border-slate-300 hover:bg-slate-50 cursor-pointer transition-colors">
+        return `<tr data-fisa-id="${f.id}" onclick='if(!event.target.closest(".log-btn") && !event.target.closest(".factura-btn") && !event.target.closest(".imagini-btn") && !event.target.closest(".deviz-btn")) openFisa(${JSON.stringify(f)})' class="border-b border-slate-300 hover:bg-slate-50 cursor-pointer transition-colors">
         ${activeUser.rol === "admin" || activeUser.rol === "user" ? `<td class="p-4 border-r border-slate-300 font-black text-slate-400 text-xs whitespace-nowrap">${globalNrCrt}${!f.data_preluare_fizica ? `<sup style="display:inline-block;width:7px;height:7px;background:#ef4444;border-radius:50%;margin-left:3px;vertical-align:super;line-height:1;" title="Lipsă Data Predării Fizice"></sup>` : ""}</td>` : ""}
 
     <td class="p-4 border-r border-slate-300 font-mono font-black text-blue-700 text-xs">
@@ -1194,6 +1195,15 @@
         ${f.marca_model}<br>
         <span class="text-blue-600 font-black uppercase text-[10px]">${f.vin_produs}</span>
         <span class="vin-check-icon ml-1 text-xs"></span>
+        ${
+          activeUser.rol === "admin"
+            ? `<br><button
+            type="button"
+            onclick="event.stopPropagation(); openDeviz(_fisaMap.get('${f.id}'))"
+            class="deviz-btn mt-1 inline-flex items-center gap-1 bg-blue-950 hover:bg-blue-900 text-white font-black text-[8px] px-2 py-0.5 rounded transition-colors uppercase leading-none"
+            title="Deschide Deviz de lucrări">📋 Deviz</button>`
+            : ""
+        }
     </td>
     ${
       activeUser.rol === "admin"
@@ -1256,7 +1266,7 @@
                 class="imagini-btn flex items-center justify-center rounded-lg transition active:scale-95 ${f.imagini_count > 0 ? "bg-slate-900 hover:bg-slate-700 text-white cursor-pointer" : "bg-slate-400 hover:bg-blue-700 text-white cursor-pointer"}"
                 style="width:28px;height:28px;padding:0;flex-shrink:0;"
                 title="${f.imagini_count > 0 ? `Vezi imagini (${f.imagini_count})` : "Vezi imagini"}"
-                onclick="openImaginiModal('${f.id}')">
+                onclick="openImaginiModal('${f.id}', '${f.status}')">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
             </button>`
                 : `<button type="button" disabled
@@ -1466,6 +1476,7 @@
         body.innerHTML = data
           .map((f, i) => {
             const globalNrCrt = totalFilteredCount - offset - i;
+            _fisaMap.set(f.id, f);
             return buildRow(f, globalNrCrt);
           })
           .join("");
@@ -3010,6 +3021,7 @@
       // ── IMAGINI STORAGE ──────────────────────────────────────────────────
 
       let _imaginiCurrentFisaId = null;
+      let _imaginiCurrentStatus = null;
 
       function triggerImaginiUpload(fisaId, btn) {
         const input = btn.closest("td").querySelector(".imagini-row-input");
@@ -3093,8 +3105,9 @@
         }
       }
 
-      async function openImaginiModal(fisaId) {
+      async function openImaginiModal(fisaId, fisaStatus) {
         _imaginiCurrentFisaId = fisaId;
+        _imaginiCurrentStatus = fisaStatus || null;
         document.getElementById("imagini-modal-fisa-id").textContent = fisaId;
         document.getElementById("imagini-grid").innerHTML =
           `<p class="text-slate-400 text-xs font-bold col-span-3 text-center py-8">Se încarcă imaginile...</p>`;
@@ -3106,6 +3119,7 @@
         document.getElementById("modal-imagini").classList.add("hidden");
         document.getElementById("imagini-grid").innerHTML = "";
         _imaginiCurrentFisaId = null;
+        _imaginiCurrentStatus = null;
       }
 
       async function loadImaginiGrid(fisaId) {
@@ -3133,7 +3147,9 @@
         grid.innerHTML = data
           .map((item, idx) => {
             const url = _imaginiUrls[idx];
-            const canDelete = activeUser.rol === "admin";
+            const canDelete =
+              activeUser.rol === "admin" ||
+              _imaginiCurrentStatus === "În lucru";
             return `<div class="relative group rounded-xl overflow-hidden border-2 border-slate-200 bg-slate-100" style="aspect-ratio:1;">
             <img src="${url}" alt="Imagine ${idx + 1}"
               class="w-full h-full object-cover cursor-pointer hover:opacity-90 transition"
@@ -3320,7 +3336,9 @@
               .getPublicUrl(storagePath);
             const url = urlData.publicUrl;
             const fileName = storagePath.split("/").pop();
-            const canDelete = activeUser.rol === "admin";
+            const canDelete =
+              activeUser.rol === "admin" ||
+              _imaginiCurrentStatus === "În lucru";
             _imaginiUrls.push(url);
             const newIdx = _imaginiUrls.length - 1;
             const card = document.createElement("div");
@@ -3411,6 +3429,309 @@
           )
           .subscribe();
       }
+      // ── DEVIZ DE LUCRĂRI ─────────────────────────────────────────────────────
+      let _currentDevizFisa = null;
+      let _devizRowCount = 0;
+      const MAX_DEVIZ_ROWS = 20;
+
+      function _formatDateRO(isoOrDate) {
+        if (!isoOrDate) return "";
+        const d = new Date(isoOrDate);
+        if (isNaN(d)) return isoOrDate;
+        return d.toLocaleDateString("ro-RO", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        });
+      }
+
+      function _todayISO() {
+        return new Date().toISOString().slice(0, 10);
+      }
+
+      function openDeviz(f) {
+        _currentDevizFisa = f;
+        document.getElementById("modal-deviz").classList.remove("hidden");
+        _renderDevizView(f);
+        // afișăm form-ul dacă nu există date salvate
+        const hasData = f.deviz_den_1 || f.deviz_um_1 || f.deviz_pret_1;
+        if (!hasData) {
+          startEditDeviz();
+        }
+      }
+
+      function closeDevizModal() {
+        document.getElementById("modal-deviz").classList.add("hidden");
+        document.getElementById("deviz-form-area").style.display = "none";
+        _currentDevizFisa = null;
+        _devizRowCount = 0;
+        _flushPendingRefresh();
+      }
+
+      function _renderDevizView(f) {
+        // Număr deviz = ID fișă, data deviz
+        const dataDeviz = f.deviz_data || _todayISO();
+        const dataFmt = _formatDateRO(dataDeviz);
+        const fisaIdNr = f.id || "";
+        document.getElementById("deviz-nr-data").textContent =
+          `Nr. ${fisaIdNr} / ${dataFmt}`;
+
+        // Date client
+        document.getElementById("dv-nume").textContent = f.nume_client || "-";
+        document.getElementById("dv-tel").textContent = f.tel_client || "-";
+        document.getElementById("dv-email").textContent = f.email_client || "-";
+        document.getElementById("dv-adresa").textContent =
+          f.adresa_client || "-";
+        document.getElementById("dv-judet").textContent = f.judet_client || "-";
+
+        // Date produs
+        document.getElementById("dv-cat").textContent = f.categorie || "-";
+        document.getElementById("dv-model").textContent = f.marca_model || "-";
+        document.getElementById("dv-vin").textContent = f.vin_produs || "-";
+        document.getElementById("dv-gar").textContent = f.tip_garantie || "-";
+
+        // Label comanda
+        document.getElementById("dv-vin-comanda").textContent =
+          `${f.marca_model || ""} (${f.vin_produs || ""})`;
+
+        // Subsol
+        document.getElementById("dv-sub-client").textContent =
+          f.nume_client || "-";
+        document.getElementById("dv-sub-repr").textContent =
+          f.deviz_reprezentant || (activeUser ? activeUser.nume_complet : "-");
+        document.getElementById("dv-sub-data").textContent = dataFmt;
+        document.getElementById("dv-sub-data-client").textContent = dataFmt;
+
+        // Tabel randuri
+        const tbody = document.getElementById("deviz-tbody");
+        tbody.innerHTML = "";
+        let total = 0;
+        for (let i = 1; i <= MAX_DEVIZ_ROWS; i++) {
+          const den = f[`deviz_den_${i}`];
+          const um = f[`deviz_um_${i}`];
+          const pret = f[`deviz_pret_${i}`];
+          if (!den && !um && !pret) continue;
+          const ptotal = (parseFloat(um) || 0) * (parseFloat(pret) || 0);
+          total += ptotal;
+          const tr = document.createElement("tr");
+          tr.style.borderBottom = "1px solid #94a3b8";
+          tr.innerHTML = `
+            <td style="padding:4px 7px; border:1px solid #94a3b8;">${den || ""}</td>
+            <td style="padding:4px 7px; border:1px solid #94a3b8; text-align:center;">${um != null ? um : ""}</td>
+            <td style="padding:4px 7px; border:1px solid #94a3b8; text-align:center;">${pret != null ? pret : ""}</td>
+            <td style="padding:4px 7px; border:1px solid #94a3b8; text-align:center; font-weight:700;">${ptotal > 0 ? ptotal.toFixed(2) : ""}</td>
+          `;
+          tbody.appendChild(tr);
+        }
+        document.getElementById("deviz-total").textContent =
+          total > 0 ? total.toFixed(2) + " RON" : "-";
+      }
+
+      function startEditDeviz() {
+        const f = _currentDevizFisa;
+        if (!f) return;
+
+        // Data deviz
+        document.getElementById("deviz-inp-data").value =
+          f.deviz_data || _todayISO();
+        // Reprezentant = adminul curent
+        document.getElementById("deviz-inp-repr").value = activeUser
+          ? activeUser.nume_complet
+          : f.deviz_reprezentant || "";
+
+        // Rânduri existente
+        const cont = document.getElementById("deviz-rows-edit");
+        cont.innerHTML = "";
+        _devizRowCount = 0;
+        let hasRows = false;
+        for (let i = 1; i <= MAX_DEVIZ_ROWS; i++) {
+          const den = f[`deviz_den_${i}`];
+          const um = f[`deviz_um_${i}`];
+          const pret = f[`deviz_pret_${i}`];
+          if (den || um || pret) {
+            _addDevizRowHTML(den, um, pret);
+            hasRows = true;
+          }
+        }
+        // Dacă nu există rânduri, adăugăm primul gol
+        if (!hasRows) _addDevizRowHTML("", "", "");
+
+        document.getElementById("deviz-form-area").style.display = "block";
+      }
+
+      function addDevizRow() {
+        if (_devizRowCount >= MAX_DEVIZ_ROWS) {
+          alert(`Maxim ${MAX_DEVIZ_ROWS} rânduri permise.`);
+          return;
+        }
+        _addDevizRowHTML("", "", "");
+      }
+
+      function _addDevizRowHTML(den, um, pret) {
+        _devizRowCount++;
+        const idx = _devizRowCount;
+        const cont = document.getElementById("deviz-rows-edit");
+        const div = document.createElement("div");
+        div.id = `deviz-row-edit-${idx}`;
+        div.style.cssText =
+          "display:grid; grid-template-columns:3fr 1fr 1fr 1fr auto; gap:4px; align-items:center;";
+        div.innerHTML = `
+          <input type="text" id="deviz-den-${idx}" value="${den || ""}" placeholder="Denumire piesă / lucrare"
+            style="padding:4px 6px; border:1px solid #cbd5e1; border-radius:4px; font-size:10px; font-weight:600;">
+          <input type="number" id="deviz-um-${idx}" value="${um != null ? um : ""}" placeholder="Buc./ore" min="0" step="0.01"
+            oninput="_recalcDevizRow(${idx})"
+            style="padding:4px 6px; border:1px solid #cbd5e1; border-radius:4px; font-size:10px; font-weight:600; text-align:center;">
+          <input type="number" id="deviz-pret-${idx}" value="${pret != null ? pret : ""}" placeholder="Preț unit." min="0" step="0.01"
+            oninput="_recalcDevizRow(${idx})"
+            style="padding:4px 6px; border:1px solid #cbd5e1; border-radius:4px; font-size:10px; font-weight:600; text-align:center;">
+          <input type="text" id="deviz-ptot-${idx}" value="${(parseFloat(um) || 0) * (parseFloat(pret) || 0) > 0 ? ((parseFloat(um) || 0) * (parseFloat(pret) || 0)).toFixed(2) : ""}" placeholder="Total" readonly
+            style="padding:4px 6px; border:1px solid #e2e8f0; border-radius:4px; font-size:10px; font-weight:700; text-align:center; background:#f8fafc; color:#15803d;">
+          <button onclick="_removeDevizRow(${idx})" title="Șterge rând"
+            style="background:#fca5a5; border:none; border-radius:4px; padding:3px 7px; font-size:11px; cursor:pointer; font-weight:900; color:#991b1b;">✕</button>
+        `;
+        cont.appendChild(div);
+      }
+
+      function _recalcDevizRow(idx) {
+        const um =
+          parseFloat(document.getElementById(`deviz-um-${idx}`).value) || 0;
+        const pret =
+          parseFloat(document.getElementById(`deviz-pret-${idx}`).value) || 0;
+        const tot = um * pret;
+        document.getElementById(`deviz-ptot-${idx}`).value =
+          tot > 0 ? tot.toFixed(2) : "";
+      }
+
+      function _removeDevizRow(idx) {
+        const el = document.getElementById(`deviz-row-edit-${idx}`);
+        if (el) el.remove();
+      }
+
+      function cancelEditDeviz() {
+        document.getElementById("deviz-form-area").style.display = "none";
+      }
+
+      async function saveDeviz() {
+        const f = _currentDevizFisa;
+        if (!f) return;
+
+        const update = {
+          deviz_data:
+            document.getElementById("deviz-inp-data").value || _todayISO(),
+          deviz_reprezentant: activeUser ? activeUser.nume_complet : "",
+        };
+
+        // Colectăm rândurile vizibile din DOM (în ordine)
+        const cont = document.getElementById("deviz-rows-edit");
+        const rows = cont.querySelectorAll("[id^='deviz-row-edit-']");
+        let rIdx = 0;
+        rows.forEach((row) => {
+          rIdx++;
+          if (rIdx > MAX_DEVIZ_ROWS) return;
+          const id = row.id.replace("deviz-row-edit-", "");
+          update[`deviz_den_${rIdx}`] =
+            document.getElementById(`deviz-den-${id}`)?.value || null;
+          update[`deviz_um_${rIdx}`] =
+            parseFloat(document.getElementById(`deviz-um-${id}`)?.value) ||
+            null;
+          update[`deviz_pret_${rIdx}`] =
+            parseFloat(document.getElementById(`deviz-pret-${id}`)?.value) ||
+            null;
+        });
+        // Golim rândurile rămase
+        for (let i = rIdx + 1; i <= MAX_DEVIZ_ROWS; i++) {
+          update[`deviz_den_${i}`] = null;
+          update[`deviz_um_${i}`] = null;
+          update[`deviz_pret_${i}`] = null;
+        }
+
+        const { error } = await _supa
+          .from("fise")
+          .update(update)
+          .eq("id", f.id);
+        if (error) {
+          alert("Eroare la salvare deviz: " + error.message);
+          return;
+        }
+
+        // Actualizăm obiectul local și re-randăm view-ul
+        Object.assign(_currentDevizFisa, update);
+        _renderDevizView(_currentDevizFisa);
+        cancelEditDeviz();
+        _devizRowCount = 0;
+        // Log
+        await _supa.from("fise_log").insert([
+          {
+            fisa_id: f.id,
+            actiune: "deviz salvat",
+            data_ora: new Date().toISOString(),
+            user_username: activeUser.username,
+            user_nume: activeUser.nume_complet,
+          },
+        ]);
+        _realtimePending = true;
+      }
+
+      async function deleteDeviz() {
+        const f = _currentDevizFisa;
+        if (!f) return;
+        if (
+          !confirm(
+            `Ștergi devizul fișei ${f.id}? Datele salvate vor fi șterse.`,
+          )
+        )
+          return;
+
+        const nullUpdate = { deviz_data: null, deviz_reprezentant: null };
+        for (let i = 1; i <= MAX_DEVIZ_ROWS; i++) {
+          nullUpdate[`deviz_den_${i}`] = null;
+          nullUpdate[`deviz_um_${i}`] = null;
+          nullUpdate[`deviz_pret_${i}`] = null;
+        }
+        const { error } = await _supa
+          .from("fise")
+          .update(nullUpdate)
+          .eq("id", f.id);
+        if (error) {
+          alert("Eroare: " + error.message);
+          return;
+        }
+
+        Object.assign(_currentDevizFisa, nullUpdate);
+        _renderDevizView(_currentDevizFisa);
+        document.getElementById("deviz-form-area").style.display = "none";
+        _realtimePending = true;
+      }
+
+      function printDeviz() {
+        // Ascundem form-ul de editare dacă e deschis
+        const formArea = document.getElementById("deviz-form-area");
+        const wasVisible = formArea.style.display !== "none";
+        formArea.style.display = "none";
+
+        // Setăm clasa de print specific pe deviz
+        const modalDeviz = document.getElementById("modal-deviz");
+        const a4 = document.getElementById("deviz-a4");
+
+        // Injectăm un style temporar pentru a printa doar deviz-a4
+        const style = document.createElement("style");
+        style.id = "deviz-print-style";
+        style.textContent = `
+          @media print {
+            body > * { display: none !important; }
+            #modal-deviz { display: block !important; position: fixed; top:0; left:0; width:100%; background:white; overflow:visible; z-index:9999; }
+            #deviz-a4 { box-shadow:none; margin:0; border:none; width:210mm; max-width:210mm; padding:8mm !important; overflow:hidden; }
+            .no-print { display: none !important; }
+          }
+        `;
+        document.head.appendChild(style);
+        window.print();
+        document.head.removeChild(style);
+
+        if (wasVisible) formArea.style.display = "block";
+      }
+      // ── END DEVIZ DE LUCRĂRI ─────────────────────────────────────────────────
+
       // ── END SUPABASE REALTIME ─────────────────────────────────────────────
     </script>
     <div
@@ -3687,6 +4008,526 @@
         </div>
       </div>
     </div>
+
+    <!-- MODAL DEVIZ DE LUCRĂRI -->
+    <div
+      id="modal-deviz"
+      class="fixed inset-0 bg-black/90 hidden z-[85] overflow-y-auto p-2 md:p-4 no-print"
+    >
+      <div
+        class="max-w-[210mm] mx-auto mb-4 flex flex-wrap gap-2 justify-between items-center bg-slate-800 p-3 rounded-xl no-print"
+      >
+        <div class="flex flex-wrap gap-2">
+          <button
+            onclick="printDeviz()"
+            class="bg-blue-600 text-white px-4 md:px-6 py-2 rounded-lg font-black text-[10px] uppercase shadow-xl hover:bg-blue-500 active:scale-95"
+          >
+            PRINT / PDF
+          </button>
+          <button
+            id="deviz-edit-btn"
+            onclick="startEditDeviz()"
+            class="bg-amber-500 text-white px-3 md:px-4 py-2 rounded-lg font-black text-[10px] uppercase active:scale-95"
+          >
+            Editează
+          </button>
+          <button
+            id="deviz-delete-btn"
+            onclick="deleteDeviz()"
+            class="bg-red-600 text-white px-3 md:px-4 py-2 rounded-lg font-black text-[10px] uppercase active:scale-95"
+          >
+            Șterge
+          </button>
+        </div>
+        <button
+          onclick="closeDevizModal()"
+          class="bg-slate-700 text-white px-4 py-2 rounded-lg font-black text-[10px] uppercase"
+        >
+          Închide
+        </button>
+      </div>
+      <!-- Pagina A4 deviz -->
+      <div
+        id="deviz-a4"
+        class="a4-page rounded-sm overflow-hidden"
+        style="
+          font-size: 12px;
+          color: #000;
+          display: flex;
+          flex-direction: column;
+          min-height: 277mm;
+        "
+      >
+        <!-- ANTET -->
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+          "
+        >
+          <div style="display: flex; align-items: flex-start; gap: 14px">
+            <div
+              style="
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 4px;
+              "
+            >
+              <img
+                src="https://i.ibb.co/Z1k3pn1z/Logogeeli.png"
+                alt="Logo Geeli"
+                style="height: 120px; object-fit: contain"
+              />
+              <div
+                style="
+                  font-size: 9px;
+                  font-weight: 700;
+                  color: #333;
+                  text-align: center;
+                "
+              >
+                Certificate number: 4952312811
+              </div>
+            </div>
+            <div style="text-align: center; padding-top: 20px">
+              <div
+                style="font-size: 18px; font-weight: 900; letter-spacing: 1px"
+              >
+                Deviz de lucrări
+              </div>
+              <div
+                id="deviz-nr-data"
+                style="font-size: 12px; font-weight: 700; margin-top: 6px"
+              ></div>
+            </div>
+          </div>
+          <div
+            style="
+              text-align: right;
+              font-size: 10px;
+              font-weight: 700;
+              line-height: 1.8;
+            "
+          >
+            <div style="font-weight: 900; font-size: 12px">
+              SC GEELI GENERATION ELECTRIC SRL
+            </div>
+            <div>Nr. Reg. Com.: J30/97/2021</div>
+            <div>C.I.F.: RO 43626696</div>
+            <div>Carei, Calea Armatei Romane, nr.96/B</div>
+            <div>Tel.: 0361 / 407607</div>
+            <div>E-mail: alin@geeli.ro</div>
+          </div>
+        </div>
+
+        <!-- DATE CLIENT / PRODUS -->
+        <div
+          style="
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 8px;
+          "
+        >
+          <div>
+            <div
+              style="
+                font-weight: 900;
+                font-size: 10px;
+                text-transform: uppercase;
+                border-bottom: 1px solid #888;
+                padding-bottom: 4px;
+                margin-bottom: 6px;
+              "
+            >
+              Date Client
+            </div>
+            <div style="margin-bottom: 2px">
+              <b>Nume:</b> <span id="dv-nume"></span>
+            </div>
+            <div style="margin-bottom: 2px">
+              <b>Telefon:</b> <span id="dv-tel"></span>
+            </div>
+            <div style="margin-bottom: 2px">
+              <b>Email:</b> <span id="dv-email"></span>
+            </div>
+            <div style="margin-bottom: 2px">
+              <b>Adresă:</b> <span id="dv-adresa"></span>
+            </div>
+            <div><b>Județ:</b> <span id="dv-judet"></span></div>
+          </div>
+          <div>
+            <div
+              style="
+                font-weight: 900;
+                font-size: 10px;
+                text-transform: uppercase;
+                border-bottom: 1px solid #888;
+                padding-bottom: 4px;
+                margin-bottom: 6px;
+              "
+            >
+              Date Produs
+            </div>
+            <div style="margin-bottom: 2px">
+              <b>Categorie:</b> <span id="dv-cat"></span>
+            </div>
+            <div style="margin-bottom: 2px">
+              <b>Model:</b> <span id="dv-model"></span>
+            </div>
+            <div style="margin-bottom: 2px">
+              <b>VIN:</b>
+              <span
+                id="dv-vin"
+                style="font-family: monospace; font-weight: 900; color: #1d4ed8"
+              ></span>
+            </div>
+            <div><b>Garanție:</b> <span id="dv-gar"></span></div>
+          </div>
+        </div>
+
+        <!-- COMANDA LUCRARI -->
+        <div
+          id="dv-comanda-label"
+          style="font-weight: 900; font-size: 11px; margin-bottom: 5px"
+        >
+          Comanda lucrări:
+          <span
+            id="dv-vin-comanda"
+            style="font-weight: 700; color: #1d4ed8"
+          ></span>
+        </div>
+        <table
+          id="deviz-table"
+          style="
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            margin-bottom: 0;
+          "
+        >
+          <thead>
+            <tr style="background: #1e293b; color: #fff; text-align: left">
+              <th
+                style="
+                  padding: 5px 7px;
+                  border: 1px solid #334155;
+                  font-size: 10px;
+                  width: 48%;
+                "
+              >
+                Denumire piesă / lucrare
+              </th>
+              <th
+                style="
+                  padding: 5px 7px;
+                  border: 1px solid #334155;
+                  font-size: 10px;
+                  width: 15%;
+                  text-align: center;
+                "
+              >
+                U.M.<br />(Buc./ore)
+              </th>
+              <th
+                style="
+                  padding: 5px 7px;
+                  border: 1px solid #334155;
+                  font-size: 10px;
+                  width: 18%;
+                  text-align: center;
+                "
+              >
+                Preț unitar<br />(TVA inclus) RON
+              </th>
+              <th
+                style="
+                  padding: 5px 7px;
+                  border: 1px solid #334155;
+                  font-size: 10px;
+                  width: 19%;
+                  text-align: center;
+                "
+              >
+                Preț total<br />(TVA inclus) RON
+              </th>
+            </tr>
+          </thead>
+          <tbody id="deviz-tbody"></tbody>
+          <tfoot>
+            <tr style="background: #e2e8f0">
+              <td
+                colspan="3"
+                style="
+                  padding: 6px 7px;
+                  border: 1px solid #64748b;
+                  font-weight: 900;
+                  font-size: 13px;
+                  text-align: right;
+                "
+              >
+                Total reparație
+              </td>
+              <td
+                id="deviz-total"
+                style="
+                  padding: 6px 7px;
+                  border: 1px solid #64748b;
+                  font-weight: 900;
+                  font-size: 14px;
+                  text-align: center;
+                  color: #1e3a8a;
+                "
+              ></td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <!-- SPATIU FLEXIBIL care impinge subsolul jos -->
+        <div style="flex: 1"></div>
+
+        <!-- SUBSOL - fixat la baza foii -->
+        <div style="margin-top: 10px">
+          <div
+            style="
+              font-size: 10px;
+              margin-bottom: 10px;
+              border-top: 1px solid #888;
+              padding-top: 6px;
+            "
+          >
+            Acest document a fost întocmit în două exemplare, unul pentru client
+            și unul pentru punctul/centrul de service.
+          </div>
+          <div
+            style="
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 12px;
+              font-size: 11px;
+              margin-bottom: 10px;
+            "
+          >
+            <div>
+              <div style="margin-bottom: 3px">
+                <b>Client:</b> <span id="dv-sub-client"></span>
+              </div>
+              <div style="margin-bottom: 3px">
+                <b>Data:</b> <span id="dv-sub-data-client"></span>
+              </div>
+              <div
+                style="
+                  margin-top: 36px;
+                  border-top: 1px solid #555;
+                  padding-top: 4px;
+                "
+              >
+                <b>Semnătura:</b>
+              </div>
+            </div>
+            <div>
+              <div style="margin-bottom: 3px">
+                <b>Reprezentant service:</b> <span id="dv-sub-repr"></span>
+              </div>
+              <div style="margin-bottom: 3px">
+                <b>Data:</b> <span id="dv-sub-data"></span>
+              </div>
+              <div
+                style="
+                  margin-top: 36px;
+                  border-top: 1px solid #555;
+                  padding-top: 4px;
+                "
+              >
+                <b>Semnătura:</b>
+              </div>
+            </div>
+          </div>
+          <div style="font-size: 10px; margin-bottom: 6px">
+            <div
+              style="
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                margin-bottom: 5px;
+              "
+            >
+              <span
+                style="
+                  display: inline-block;
+                  width: 13px;
+                  height: 13px;
+                  border: 1.5px solid #000;
+                  flex-shrink: 0;
+                "
+              ></span
+              ><span
+                ><b>Sunt</b> de acord cu PV de constatare întocmit de
+                Departamentul de Service și accept reparațiile</span
+              >
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px">
+              <span
+                style="
+                  display: inline-block;
+                  width: 13px;
+                  height: 13px;
+                  border: 1.5px solid #000;
+                  flex-shrink: 0;
+                "
+              ></span
+              ><span
+                ><b>Nu sunt</b> de acord cu PV de constatare întocmit de
+                Departamentul de Service și nu accept reparațiile</span
+              >
+            </div>
+          </div>
+          <div
+            style="
+              font-size: 9.5px;
+              border-top: 1px solid #888;
+              padding-top: 5px;
+              color: #333;
+            "
+          >
+            <ul style="padding-left: 16px; margin: 0">
+              <li>
+                În cazul în care produsul se află în post garanție sau s-a
+                constatat că nu mai face obiectul garanției, clientul este
+                nevoit să plătească constatarea și transportul.
+              </li>
+              <li style="font-weight: 900; margin-top: 3px">
+                Preț transport + constatare = 168 ron + TVA
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- FORMULAR EDITARE (no-print) -->
+        <div
+          id="deviz-form-area"
+          class="no-print"
+          style="
+            display: none;
+            margin-top: 12px;
+            border-top: 2px dashed #94a3b8;
+            padding-top: 10px;
+          "
+        >
+          <div
+            style="
+              font-weight: 900;
+              font-size: 10px;
+              color: #1e40af;
+              margin-bottom: 8px;
+              text-transform: uppercase;
+            "
+          >
+            ✏️ Editare deviz — completați câmpurile
+          </div>
+          <div
+            style="
+              display: flex;
+              gap: 8px;
+              margin-bottom: 8px;
+              align-items: center;
+            "
+          >
+            <label style="font-size: 9px; font-weight: 900; white-space: nowrap"
+              >Data deviz:</label
+            >
+            <input
+              type="date"
+              id="deviz-inp-data"
+              class="p-1 border border-slate-300 rounded text-xs font-bold"
+              style="width: 140px"
+            />
+            <label
+              style="
+                font-size: 9px;
+                font-weight: 900;
+                white-space: nowrap;
+                margin-left: 12px;
+              "
+              >Reprezentant:</label
+            >
+            <input
+              type="text"
+              id="deviz-inp-repr"
+              class="p-1 border border-slate-300 rounded text-xs font-bold flex-grow"
+              placeholder="Reprezentant service"
+              readonly
+              style="background: #f8fafc"
+            />
+          </div>
+          <div
+            id="deviz-rows-edit"
+            style="
+              display: flex;
+              flex-direction: column;
+              gap: 4px;
+              margin-bottom: 6px;
+            "
+          ></div>
+          <button
+            onclick="addDevizRow()"
+            style="
+              font-size: 10px;
+              font-weight: 900;
+              background: #e2e8f0;
+              border: none;
+              border-radius: 6px;
+              padding: 4px 14px;
+              cursor: pointer;
+              color: #1e293b;
+            "
+          >
+            ＋ Adaugă rând
+          </button>
+          <div style="margin-top: 8px; display: flex; gap: 8px">
+            <button
+              onclick="saveDeviz()"
+              style="
+                background: #2563eb;
+                color: #fff;
+                font-weight: 900;
+                font-size: 10px;
+                padding: 6px 20px;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+              "
+            >
+              💾 Salvează
+            </button>
+            <button
+              onclick="cancelEditDeviz()"
+              style="
+                background: #94a3b8;
+                color: #fff;
+                font-weight: 900;
+                font-size: 10px;
+                padding: 6px 16px;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+              "
+            >
+              Anulează
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- END MODAL DEVIZ -->
 
     <!-- MODAL IMAGINE FULLSCREEN -->
     <div
