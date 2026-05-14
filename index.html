@@ -1378,7 +1378,7 @@
             ? `<br><button
             type="button"
             onclick="event.stopPropagation(); openDeviz(_fisaMap.get('${f.id}'))"
-            class="deviz-btn mt-1 inline-flex items-center gap-1 bg-blue-950 hover:bg-blue-900 text-white font-black text-[8px] px-2 py-0.5 rounded transition-colors uppercase leading-none"
+            class="deviz-btn mt-1 inline-flex items-center gap-1 ${f.deviz_den_1 || f.deviz_um_1 || f.deviz_pret_1 ? "bg-blue-950 hover:bg-blue-900" : "bg-slate-400 hover:bg-slate-500"} text-white font-black text-[8px] px-2 py-0.5 rounded transition-colors uppercase leading-none"
             title="Deschide Deviz de lucrări">📋 Deviz</button>`
             : ""
         }
@@ -2077,6 +2077,7 @@
     </div>
                 <div class="p-2 md:p-4 border-2 border-slate-100 bg-blue-50/30 text-[11px] md:text-[13px] font-bold text-slate-900 min-h-[40px] whitespace-pre-line rounded-xl">${f.raport_reparatie ? f.raport_reparatie.trim() : "Diagnosticare în curs..."}</div>
                     ${(() => {
+                      if (f.tip_garantie !== "In garantie") return "";
                       const pieseList = [];
                       for (let i = 1; i <= 12; i++) {
                         if (f[`piesa_${i}_denumire`]) {
@@ -2211,7 +2212,7 @@
     <textarea id="s-rap" placeholder="Descrieți lucrarea..." 
               class="w-full p-3 rounded-xl text-slate-900 text-xs font-bold mb-4 h-24 border-2">${f.raport_reparatie || ""}</textarea>
 </div>
-${renderPieseSection(f, true)}
+${f.tip_garantie === "In garantie" ? renderPieseSection(f, true) : ""}
           <div class="flex flex-col md:flex-row gap-2 mt-3">
                                 <button onclick="saveRaport(false)" class="bg-slate-800 py-3 md:py-4 rounded-xl font-black uppercase text-[10px] flex-grow">Salvează Ciornă</button>
                                 <button onclick="saveRaport(true)" class="bg-green-500 py-3 md:py-4 rounded-xl font-black uppercase text-[10px] flex-grow shadow-lg active:scale-95">Finalizează Lucrarea</button>
