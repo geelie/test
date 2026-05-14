@@ -917,6 +917,184 @@
       let currentFisa = null;
       const _fisaMap = new Map();
 
+      // ── LISTA PIESE AUTO ─────────────────────────────────────────────────
+      const PIESE_AUTO = [
+        "ACCELERATIE",
+        "ACUMULATOR 12V 100AH",
+        "ACUMULATOR 12V 12AH",
+        "ACUMULATOR 12V 14AH",
+        "ACUMULATOR 12V 20AH",
+        "ACUMULATOR 12V 32AH",
+        "ACUMULATOR 12V 45AH",
+        "ACUMULATOR 12V 58AH",
+        "ACUMULATOR 12V 62AH",
+        "ACUMULATOR 12V 80AH",
+        "ADAPTOR CONTROLLER",
+        "ADAPTOR MOTOR",
+        "AEROTERMA",
+        "AMORTIZOR FATA DREAPTA",
+        "AMORTIZOR FATA STANGA",
+        "ANVELOPA",
+        "BATERII",
+        "BOXA MARSALIER",
+        "BUTON MARSALIER",
+        "CAMERA REVERSE",
+        "CLAXON",
+        "CONTROLLER",
+        "DIFERENTIAL",
+        "DIFUZOR",
+        "DISC FRANA",
+        "DISPLAY",
+        "DISPLAY + NAVIGATIE",
+        "ETRIER DREAPTA",
+        "ETRIER STANGA",
+        "FRANA DE MANA",
+        "INCARCATOR",
+        "INVERTOR",
+        "MANETA FRANA",
+        "MANETA PEDALA",
+        "MOTOR",
+        "MOTOR STERGATOR",
+        "MUFA INCARCARE",
+        "PEDALA FRANA",
+        "PUNTE CU DIFERENTIAL",
+        "REDUCTOR",
+        "SENZOR FRANA",
+        "SENZOR PEDALA FRANA",
+        "SIGURANTA PRINCIPALA",
+        "SUPORT FURCA",
+        "TELESCOP",
+      ];
+      const MAX_PIESE = 12;
+
+      function _buildPiesaRow(idx, denumire, buc) {
+        return `
+        <div id="piesa-row-${idx}" class="flex items-center gap-2 mb-2 relative">
+          <div class="flex-grow relative">
+            <input type="text" id="piesa-den-${idx}"
+              value="${denumire || ""}"
+              placeholder="Denumire piesă..."
+              oninput="filterPiese(${idx})"
+              onblur="setTimeout(()=>hidePieseSuggestions(${idx}),150)"
+              class="w-full p-2 rounded-lg text-slate-900 text-xs font-bold border-2 border-slate-300 focus:border-blue-400 outline-none uppercase"
+              style="text-transform:uppercase;">
+            <div id="piesa-sug-${idx}" class="hidden absolute left-0 right-0 top-full mt-0.5 bg-white border-2 border-blue-400 rounded-lg shadow-xl z-50 max-h-40 overflow-y-auto"></div>
+          </div>
+          <div class="flex items-center gap-1 flex-shrink-0">
+            <label class="text-[9px] font-black text-white uppercase">buc.</label>
+            <input type="number" id="piesa-buc-${idx}" value="${buc != null ? buc : 1}" min="1"
+              class="w-14 p-2 rounded-lg text-slate-900 text-xs font-bold border-2 border-slate-300 focus:border-blue-400 outline-none text-center">
+          </div>
+        </div>`;
+      }
+
+      function renderPieseSection(f, canEdit) {
+        let rows = "";
+        let count = 0;
+        // Afisam doar randurile cu date salvate
+        for (let i = 1; i <= MAX_PIESE; i++) {
+          const den = f[`piesa_${i}_denumire`];
+          const buc = f[`piesa_${i}_buc`];
+          if (den) {
+            count++;
+            rows += _buildPiesaRow(i, den, buc);
+          }
+        }
+        // Adaugam intotdeauna un singur rand gol la final
+        if (count < MAX_PIESE) {
+          rows += _buildPiesaRow(count + 1, "", 1);
+        }
+        window._pieseRowCount = count;
+
+        return `
+        <div class="col-span-1 sm:col-span-2 md:col-span-full mt-2">
+          <label class="text-[9px] font-black text-white uppercase ml-1">Piese Utilizate</label>
+          <div id="piese-container" class="mt-1 space-y-0">
+            ${rows}
+          </div>
+          <button type="button" onclick="addPiesaRow()"
+            id="btn-add-piesa"
+            class="mt-1 flex items-center gap-1 bg-white/20 hover:bg-white/30 text-white font-black text-[10px] px-3 py-1.5 rounded-lg transition active:scale-95 uppercase">
+            ＋ Adaugă piesă
+          </button>
+        </div>`;
+      }
+
+      function filterPiese(idx) {
+        const input = document.getElementById(`piesa-den-${idx}`);
+        const sug = document.getElementById(`piesa-sug-${idx}`);
+        if (!input || !sug) return;
+        const val = input.value.toUpperCase();
+        if (!val) {
+          sug.classList.add("hidden");
+          return;
+        }
+        const matches = PIESE_AUTO.filter((p) => p.includes(val));
+        if (!matches.length) {
+          sug.classList.add("hidden");
+          return;
+        }
+        sug.innerHTML = matches
+          .map(
+            (p) =>
+              `<div class="px-3 py-2 text-xs font-bold text-slate-900 hover:bg-blue-50 cursor-pointer uppercase"
+            onmousedown="selectPiesa(${idx}, '${p.replace(/'/g, "\\'")}')">${p}</div>`,
+          )
+          .join("");
+        sug.classList.remove("hidden");
+      }
+
+      function selectPiesa(idx, val) {
+        const input = document.getElementById(`piesa-den-${idx}`);
+        if (input) input.value = val;
+        hidePieseSuggestions(idx);
+      }
+
+      function hidePieseSuggestions(idx) {
+        const sug = document.getElementById(`piesa-sug-${idx}`);
+        if (sug) sug.classList.add("hidden");
+      }
+
+      function addPiesaRow() {
+        // _pieseRowCount = nr. piese completate; randul gol curent = count+1
+        // Verificam daca randul gol curent are ceva scris
+        const currentEmptyIdx = window._pieseRowCount + 1;
+        const currentInput = document.getElementById(
+          `piesa-den-${currentEmptyIdx}`,
+        );
+        if (currentInput && currentInput.value.trim()) {
+          // Userul a completat randul gol — il consideram piesa si adaugam urmatorul
+          window._pieseRowCount++;
+        }
+        const nextEmptyIdx = window._pieseRowCount + 1;
+        if (nextEmptyIdx > MAX_PIESE) {
+          alert(`Maxim ${MAX_PIESE} piese permise.`);
+          return;
+        }
+        // Verificam daca randul urmator exista deja in DOM
+        if (document.getElementById(`piesa-row-${nextEmptyIdx}`)) return;
+        const container = document.getElementById("piese-container");
+        if (!container) return;
+        const div = document.createElement("div");
+        div.innerHTML = _buildPiesaRow(nextEmptyIdx, "", 1);
+        container.appendChild(div.firstElementChild);
+        document.getElementById(`piesa-den-${nextEmptyIdx}`)?.focus();
+      }
+
+      function collectPiese() {
+        const result = {};
+        for (let i = 1; i <= MAX_PIESE; i++) {
+          const denEl = document.getElementById(`piesa-den-${i}`);
+          const bucEl = document.getElementById(`piesa-buc-${i}`);
+          result[`piesa_${i}_denumire`] = denEl
+            ? denEl.value.trim().toUpperCase() || null
+            : null;
+          result[`piesa_${i}_buc`] = bucEl ? parseInt(bucEl.value) || 1 : 1;
+        }
+        return result;
+      }
+      // ── END LISTA PIESE AUTO ─────────────────────────────────────────────
+
       function getRoTime() {
         const now = new Date();
         const year = now.getFullYear();
@@ -1898,6 +2076,21 @@
         <p>FACTURĂ: <span class="text-blue-700">${f.emitent_factura_service || "-"}</span></p>
     </div>
                 <div class="p-2 md:p-4 border-2 border-slate-100 bg-blue-50/30 text-[11px] md:text-[13px] font-bold text-slate-900 min-h-[40px] whitespace-pre-line rounded-xl">${f.raport_reparatie ? f.raport_reparatie.trim() : "Diagnosticare în curs..."}</div>
+                    ${(() => {
+                      const pieseList = [];
+                      for (let i = 1; i <= 12; i++) {
+                        if (f[`piesa_${i}_denumire`]) {
+                          pieseList.push(
+                            `<span class="inline-flex items-center gap-1 bg-slate-800 text-white px-2 py-0.5 rounded text-[10px] font-bold uppercase">${f[`piesa_${i}_denumire`]} <span class="text-slate-400">×${f[`piesa_${i}_buc`] || 1}</span></span>`,
+                          );
+                        }
+                      }
+                      if (!pieseList.length) return "";
+                      return `<div class="no-print mt-2 p-2 border border-dashed border-slate-300 rounded-lg bg-slate-50">
+                        <p class="text-[9px] font-black text-slate-500 uppercase mb-1">Piese utilizate:</p>
+                        <div class="flex flex-wrap gap-1">${pieseList.join("")}</div>
+                      </div>`;
+                    })()}
                     </div>
                 </div>
                 <div class="mt-4 flex justify-between px-4 md:px-10 text-[9px] md:text-[11px] font-black uppercase text-slate-900">
@@ -1911,6 +2104,10 @@
         <p class="italic pl-20 text-slate-900">...................</p>
     </div>
 </div>
+<div class="mt-auto pt-4 text-[11px] leading-tight text-black border-t border-slate-100">
+    <p class="font-bold mb-0.5">
+        CERTIFICAT DE CALITATE ȘI GARANȚIE A REPARAȚIILOR
+    </p>
                <div class="mt-auto pt-4 text-[11px] leading-tight text-black italic border-t border-slate-100">
     <p class="mb-2">
         În conformitate cu O.G. 21/1992 republicată și OUG 140/2021, unitatea noastră garantează lucrările de reparații executate, după cum urmează:
@@ -1920,7 +2117,7 @@
             3 luni de la data recepției vehiculului, dacă lucrarea de reparații nu a necesitat înlocuiri de piese
         </li>
         <li>
-            6 luni pentru manoperă și 12 luni pentru piesele furnizate de unitate
+            6 luni pentru lucrările efectuate și 12 luni pentru piesele furnizate de unitate
         </li>
     </ul>
 </div>
@@ -2013,8 +2210,9 @@
     <label class="text-[9px] font-black text-white uppercase ml-1">Raport Reparații / Observații</label>
     <textarea id="s-rap" placeholder="Descrieți lucrarea..." 
               class="w-full p-3 rounded-xl text-slate-900 text-xs font-bold mb-4 h-24 border-2">${f.raport_reparatie || ""}</textarea>
-</div>                       
-          <div class="flex flex-col md:flex-row gap-2">
+</div>
+${renderPieseSection(f, true)}
+          <div class="flex flex-col md:flex-row gap-2 mt-3">
                                 <button onclick="saveRaport(false)" class="bg-slate-800 py-3 md:py-4 rounded-xl font-black uppercase text-[10px] flex-grow">Salvează Ciornă</button>
                                 <button onclick="saveRaport(true)" class="bg-green-500 py-3 md:py-4 rounded-xl font-black uppercase text-[10px] flex-grow shadow-lg active:scale-95">Finalizează Lucrarea</button>
                             </div>
@@ -2069,6 +2267,7 @@
           raport_reparatie: document.getElementById("s-rap").value,
           status: noulStatus,
           data_finalizare: isFinal ? new Date().toISOString() : null,
+          ...collectPiese(),
         };
 
         if (document.getElementById("s-transport")) {
