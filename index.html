@@ -4048,7 +4048,8 @@ ${f.tip_garantie === "In garantie" ? renderPieseSection(f, true) : ""}
           >
             <span style="font-weight:900;color:#1e293b;">${f.nume_client}</span>
             ${f.tel_client ? `<span style="margin-left:8px;font-weight:700;color:#2563eb;font-size:11px;">${f.tel_client}</span>` : ""}
-            ${f.judet_client ? `<span style="margin-left:6px;font-size:10px;color:#64748b;font-weight:700;">(${f.judet_client})</span>` : ""}
+            ${f.judet_client ? `<span style="margin-left:6px;font-size:10px;color:#64748b;font-weight:700;">(${f.judet_client})</span>` : ""} 
+            <span style="margin-left:8px;font-size:10px;font-weight:700;color:#94a3b8;font-family:monospace;">${f.id}</span>
           </div>
         `,
           )
