@@ -508,13 +508,34 @@
                   class="text-[9px] font-black text-slate-800 uppercase ml-1"
                   >Nume Prenume</label
                 >
-                <input
-                  type="text"
-                  id="c-nume"
-                  placeholder="Nume Prenume"
-                  class="w-full p-3 border-2 border-slate-200 rounded-lg font-semibold text-sm"
-                  required
-                />
+                <div style="position: relative">
+                  <input
+                    type="text"
+                    id="c-nume"
+                    placeholder="Nume Prenume"
+                    class="w-full p-3 border-2 border-slate-200 rounded-lg font-semibold text-sm"
+                    required
+                    autocomplete="off"
+                  />
+                  <div
+                    id="c-nume-dropdown"
+                    style="
+                      display: none;
+                      position: absolute;
+                      top: 100%;
+                      left: 0;
+                      right: 0;
+                      z-index: 999;
+                      background: #fff;
+                      border: 2px solid #3b82f6;
+                      border-top: none;
+                      border-radius: 0 0 10px 10px;
+                      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.13);
+                      max-height: 260px;
+                      overflow-y: auto;
+                    "
+                  ></div>
+                </div>
               </div>
               <div>
                 <label
@@ -1201,6 +1222,7 @@
 
           loadFise();
           _startRealtime();
+          initClientAutocomplete();
         } else {
           if (!storedU) alert("Date incorecte!");
           else localStorage.removeItem("geeli_session");
@@ -3709,8 +3731,9 @@ ${f.tip_garantie === "In garantie" ? renderPieseSection(f, true) : ""}
         for (let i = 1; i <= MAX_DEVIZ_ROWS; i++) {
           const den = f[`deviz_den_${i}`];
           const um = f[`deviz_um_${i}`];
+          const umText = f[`deviz_um_text_${i}`];
           const pret = f[`deviz_pret_${i}`];
-          if (!den && !um && !pret) continue;
+          if (!den && !um && !pret && !umText) continue;
           const ptotal = (parseFloat(um) || 0) * (parseFloat(pret) || 0);
           total += ptotal;
           const tr = document.createElement("tr");
@@ -3718,6 +3741,7 @@ ${f.tip_garantie === "In garantie" ? renderPieseSection(f, true) : ""}
           tr.innerHTML = `
             <td style="padding:4px 7px; border:1px solid #94a3b8;">${den || ""}</td>
             <td style="padding:4px 7px; border:1px solid #94a3b8; text-align:center;">${um != null ? um : ""}</td>
+            <td style="padding:4px 7px; border:1px solid #94a3b8; text-align:center;">${umText || ""}</td>
             <td style="padding:4px 7px; border:1px solid #94a3b8; text-align:center;">${pret != null ? pret : ""}</td>
             <td style="padding:4px 7px; border:1px solid #94a3b8; text-align:center; font-weight:700;">${ptotal > 0 ? ptotal.toFixed(2) : ""}</td>
           `;
@@ -3747,14 +3771,15 @@ ${f.tip_garantie === "In garantie" ? renderPieseSection(f, true) : ""}
         for (let i = 1; i <= MAX_DEVIZ_ROWS; i++) {
           const den = f[`deviz_den_${i}`];
           const um = f[`deviz_um_${i}`];
+          const umText = f[`deviz_um_text_${i}`];
           const pret = f[`deviz_pret_${i}`];
-          if (den || um || pret) {
-            _addDevizRowHTML(den, um, pret);
+          if (den || um || umText || pret) {
+            _addDevizRowHTML(den, um, umText, pret);
             hasRows = true;
           }
         }
         // Dacă nu există rânduri, adăugăm primul gol
-        if (!hasRows) _addDevizRowHTML("", "", "");
+        if (!hasRows) _addDevizRowHTML("", "", "", "");
 
         document.getElementById("deviz-form-area").style.display = "block";
       }
@@ -3764,22 +3789,24 @@ ${f.tip_garantie === "In garantie" ? renderPieseSection(f, true) : ""}
           alert(`Maxim ${MAX_DEVIZ_ROWS} rânduri permise.`);
           return;
         }
-        _addDevizRowHTML("", "", "");
+        _addDevizRowHTML("", "", "", "");
       }
 
-      function _addDevizRowHTML(den, um, pret) {
+      function _addDevizRowHTML(den, um, umText, pret) {
         _devizRowCount++;
         const idx = _devizRowCount;
         const cont = document.getElementById("deviz-rows-edit");
         const div = document.createElement("div");
         div.id = `deviz-row-edit-${idx}`;
         div.style.cssText =
-          "display:grid; grid-template-columns:3fr 1fr 1fr 1fr auto; gap:4px; align-items:center;";
+          "display:grid; grid-template-columns:3fr 1fr 1fr 1fr 1fr auto; gap:4px; align-items:center;";
         div.innerHTML = `
           <input type="text" id="deviz-den-${idx}" value="${den || ""}" placeholder="Denumire piesă / lucrare"
             style="padding:4px 6px; border:1px solid #cbd5e1; border-radius:4px; font-size:10px; font-weight:600;">
-          <input type="number" id="deviz-um-${idx}" value="${um != null ? um : ""}" placeholder="Buc./ore" min="0" step="0.01"
+          <input type="number" id="deviz-um-${idx}" value="${um != null ? um : ""}" placeholder="Cantitate" min="0" step="0.01"
             oninput="_recalcDevizRow(${idx})"
+            style="padding:4px 6px; border:1px solid #cbd5e1; border-radius:4px; font-size:10px; font-weight:600; text-align:center;">
+          <input type="text" id="deviz-um-text-${idx}" value="${umText || ""}" placeholder="U.M."
             style="padding:4px 6px; border:1px solid #cbd5e1; border-radius:4px; font-size:10px; font-weight:600; text-align:center;">
           <input type="number" id="deviz-pret-${idx}" value="${pret != null ? pret : ""}" placeholder="Preț unit." min="0" step="0.01"
             oninput="_recalcDevizRow(${idx})"
@@ -3834,6 +3861,8 @@ ${f.tip_garantie === "In garantie" ? renderPieseSection(f, true) : ""}
           update[`deviz_um_${rIdx}`] =
             parseFloat(document.getElementById(`deviz-um-${id}`)?.value) ||
             null;
+          update[`deviz_um_text_${rIdx}`] =
+            document.getElementById(`deviz-um-text-${id}`)?.value || null;
           update[`deviz_pret_${rIdx}`] =
             parseFloat(document.getElementById(`deviz-pret-${id}`)?.value) ||
             null;
@@ -3842,6 +3871,7 @@ ${f.tip_garantie === "In garantie" ? renderPieseSection(f, true) : ""}
         for (let i = rIdx + 1; i <= MAX_DEVIZ_ROWS; i++) {
           update[`deviz_den_${i}`] = null;
           update[`deviz_um_${i}`] = null;
+          update[`deviz_um_text_${i}`] = null;
           update[`deviz_pret_${i}`] = null;
         }
 
@@ -3886,6 +3916,7 @@ ${f.tip_garantie === "In garantie" ? renderPieseSection(f, true) : ""}
         for (let i = 1; i <= MAX_DEVIZ_ROWS; i++) {
           nullUpdate[`deviz_den_${i}`] = null;
           nullUpdate[`deviz_um_${i}`] = null;
+          nullUpdate[`deviz_um_text_${i}`] = null;
           nullUpdate[`deviz_pret_${i}`] = null;
         }
         const { error } = await _supa
@@ -3933,6 +3964,130 @@ ${f.tip_garantie === "In garantie" ? renderPieseSection(f, true) : ""}
       // ── END DEVIZ DE LUCRĂRI ─────────────────────────────────────────────────
 
       // ── END SUPABASE REALTIME ─────────────────────────────────────────────
+
+      // ── AUTOCOMPLETE NUME CLIENT ──────────────────────────────────────────
+      function initClientAutocomplete() {
+        const input = document.getElementById("c-nume");
+        const dropdown = document.getElementById("c-nume-dropdown");
+        if (!input || !dropdown) return;
+
+        let _acTimer = null;
+
+        input.addEventListener("input", () => {
+          clearTimeout(_acTimer);
+          const q = input.value.trim();
+          if (q.length < 2) {
+            dropdown.style.display = "none";
+            return;
+          }
+          _acTimer = setTimeout(() => searchClientNume(q), 280);
+        });
+
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Escape") {
+            dropdown.style.display = "none";
+          }
+          if (e.key === "ArrowDown") {
+            const first = dropdown.querySelector(".ac-item");
+            if (first) first.focus();
+            e.preventDefault();
+          }
+        });
+
+        document.addEventListener("click", (e) => {
+          if (!input.contains(e.target) && !dropdown.contains(e.target))
+            dropdown.style.display = "none";
+        });
+      }
+
+      async function searchClientNume(q) {
+        const dropdown = document.getElementById("c-nume-dropdown");
+        dropdown.innerHTML =
+          '<div style="padding:10px 14px;font-size:11px;font-weight:700;color:#64748b;">Se caută...</div>';
+        dropdown.style.display = "block";
+
+        const { data, error } = await _supa
+          .from("fise")
+          .select(
+            "id, nume_client, tel_client, email_client, adresa_client, judet_client",
+          )
+          .ilike("nume_client", `%${q}%`)
+          .eq("is_deleted", false)
+          .order("updated_at", { ascending: false })
+          .limit(8);
+
+        if (error || !data || data.length === 0) {
+          dropdown.innerHTML =
+            '<div style="padding:10px 14px;font-size:11px;font-weight:700;color:#94a3b8;font-style:italic;">Niciun client găsit — introduceți manual</div>';
+          return;
+        }
+
+        // Deduplicare după nume_client (păstrăm prima apariție — cea mai recentă)
+        const seen = new Set();
+        const unici = data.filter((f) => {
+          const key = f.nume_client.trim().toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+
+        dropdown.innerHTML = unici
+          .map(
+            (f, idx) => `
+          <div
+            class="ac-item"
+            tabindex="0"
+            data-idx="${idx}"
+            style="padding:9px 14px;cursor:pointer;border-bottom:1px solid #e2e8f0;font-size:12px;outline:none;transition:background 0.12s;"
+            onmouseenter="this.style.background='#eff6ff'"
+            onmouseleave="this.style.background=''"
+            onfocus="this.style.background='#eff6ff'"
+            onblur="this.style.background=''"
+            onclick="selectClientAC(${JSON.stringify(f).replace(/"/g, "&quot;")})"
+            onkeydown="handleAcKeydown(event, ${JSON.stringify(f).replace(/"/g, "&quot;")})"
+          >
+            <span style="font-weight:900;color:#1e293b;">${f.nume_client}</span>
+            ${f.tel_client ? `<span style="margin-left:8px;font-weight:700;color:#2563eb;font-size:11px;">${f.tel_client}</span>` : ""}
+            ${f.judet_client ? `<span style="margin-left:6px;font-size:10px;color:#64748b;font-weight:700;">(${f.judet_client})</span>` : ""}
+          </div>
+        `,
+          )
+          .join("");
+      }
+
+      function selectClientAC(f) {
+        document.getElementById("c-nume").value = f.nume_client;
+        document.getElementById("c-tel").value = f.tel_client || "";
+        document.getElementById("c-email").value = f.email_client || "";
+        document.getElementById("c-adr").value = f.adresa_client || "";
+        if (f.judet_client)
+          document.getElementById("c-judet").value = f.judet_client;
+        document.getElementById("c-nume-dropdown").style.display = "none";
+        document.getElementById("c-nume").focus();
+      }
+
+      function handleAcKeydown(e, f) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          selectClientAC(f);
+        }
+        if (e.key === "ArrowDown") {
+          const next = e.currentTarget.nextElementSibling;
+          if (next) next.focus();
+          e.preventDefault();
+        }
+        if (e.key === "ArrowUp") {
+          const prev = e.currentTarget.previousElementSibling;
+          if (prev) prev.focus();
+          else document.getElementById("c-nume").focus();
+          e.preventDefault();
+        }
+        if (e.key === "Escape") {
+          document.getElementById("c-nume-dropdown").style.display = "none";
+          document.getElementById("c-nume").focus();
+        }
+      }
+      // ── END AUTOCOMPLETE NUME CLIENT ──────────────────────────────────────
     </script>
     <div
       id="modal-archive"
@@ -4421,18 +4576,29 @@ ${f.tip_garantie === "In garantie" ? renderPieseSection(f, true) : ""}
                   padding: 5px 7px;
                   border: 1px solid #334155;
                   font-size: 10px;
-                  width: 15%;
+                  width: 10%;
                   text-align: center;
                 "
               >
-                U.M.<br />(Buc./ore)
+                Cantitate
               </th>
               <th
                 style="
                   padding: 5px 7px;
                   border: 1px solid #334155;
                   font-size: 10px;
-                  width: 18%;
+                  width: 10%;
+                  text-align: center;
+                "
+              >
+                U.M.
+              </th>
+              <th
+                style="
+                  padding: 5px 7px;
+                  border: 1px solid #334155;
+                  font-size: 10px;
+                  width: 16%;
                   text-align: center;
                 "
               >
@@ -4443,7 +4609,7 @@ ${f.tip_garantie === "In garantie" ? renderPieseSection(f, true) : ""}
                   padding: 5px 7px;
                   border: 1px solid #334155;
                   font-size: 10px;
-                  width: 19%;
+                  width: 16%;
                   text-align: center;
                 "
               >
