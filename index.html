@@ -398,6 +398,7 @@
             </div>
           </div>
 
+          <div id="aprobari-banner" class="hidden"></div>
           <div class="flex gap-2 mb-6 items-center">
             <input
               type="text"
@@ -508,34 +509,13 @@
                   class="text-[9px] font-black text-slate-800 uppercase ml-1"
                   >Nume Prenume</label
                 >
-                <div style="position: relative">
-                  <input
-                    type="text"
-                    id="c-nume"
-                    placeholder="Nume Prenume"
-                    class="w-full p-3 border-2 border-slate-200 rounded-lg font-semibold text-sm"
-                    required
-                    autocomplete="off"
-                  />
-                  <div
-                    id="c-nume-dropdown"
-                    style="
-                      display: none;
-                      position: absolute;
-                      top: 100%;
-                      left: 0;
-                      right: 0;
-                      z-index: 999;
-                      background: #fff;
-                      border: 2px solid #3b82f6;
-                      border-top: none;
-                      border-radius: 0 0 10px 10px;
-                      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.13);
-                      max-height: 260px;
-                      overflow-y: auto;
-                    "
-                  ></div>
-                </div>
+                <input
+                  type="text"
+                  id="c-nume"
+                  placeholder="Nume Prenume"
+                  class="w-full p-3 border-2 border-slate-200 rounded-lg font-semibold text-sm"
+                  required
+                />
               </div>
               <div>
                 <label
@@ -934,6 +914,25 @@
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNoc3VxZWNhcWhuanFtbXV3ZmhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0NDQ4NDMsImV4cCI6MjA4ODAyMDg0M30.CRMlqol-pl3DSBSBvpm04PLkSjE9lja3c1JnKnLrWvs";
       const _supa = supabase.createClient(SUPA_URL, SUPA_KEY);
 
+      // ── APROBARE RAPORT PENTRU FIRME ──────────────────────────────────────
+      // Fișele finalizate ale acestor firme (câmpul "magazin") au raportul de
+      // reparații vizibil în aplicația firmei doar după aprobarea unui admin.
+      const FIRME_RAPORT_APROBARE = ["ROTAKT S.R.L.", "SAMUS"];
+      let _idsRapoarteDeAprobat = [];
+      const _normFirma = (v) =>
+        String(v || "")
+          .trim()
+          .toUpperCase();
+      function _firmaCuAprobare(f) {
+        return FIRME_RAPORT_APROBARE.map(_normFirma).includes(
+          _normFirma(f.magazin),
+        );
+      }
+      function _firmeOrFilter() {
+        return FIRME_RAPORT_APROBARE.map((n) => `magazin.ilike.${n}`).join(",");
+      }
+      // ── END APROBARE RAPORT ───────────────────────────────────────────────
+
       let activeUser = null;
       let currentFisa = null;
       const _fisaMap = new Map();
@@ -993,7 +992,7 @@
         <div id="piesa-row-${idx}" class="flex items-center gap-2 mb-2 relative">
           <div class="flex-grow relative">
             <input type="text" id="piesa-den-${idx}"
-              value="${denumire || ""}"
+              value="${esc(denumire)}"
               placeholder="Denumire piesă..."
               oninput="filterPiese(${idx})"
               onblur="setTimeout(()=>hidePieseSuggestions(${idx}),150)"
@@ -1059,7 +1058,8 @@
           .map(
             (p) =>
               `<div class="px-3 py-2 text-xs font-bold text-slate-900 hover:bg-blue-50 cursor-pointer uppercase"
-            onmousedown="selectPiesa(${idx}, '${p.replace(/'/g, "\\'")}')">${p}</div>`,
+            data-val="${esc(p)}"
+            onmousedown="selectPiesa(${idx}, this.dataset.val)">${esc(p)}</div>`,
           )
           .join("");
         sug.classList.remove("hidden");
@@ -1125,6 +1125,19 @@
         const minutes = String(now.getMinutes()).padStart(2, "0");
         return `${year}-${month}-${day}T${hours}:${minutes}`;
       }
+      // ── HTML ESCAPE ───────────────────────────────────────────────────────
+      // Sanitizează orice valoare înainte de interpolarea în innerHTML sau
+      // atribute HTML, prevenind erori cauzate de caractere speciale din date.
+      function esc(val) {
+        if (val == null) return "";
+        return String(val)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+      // ── END HTML ESCAPE ───────────────────────────────────────────────────
       function formatRelativ(dateStr) {
         if (!dateStr) return "Recent";
         const dataModificarii = new Date(dateStr);
@@ -1191,6 +1204,9 @@
               .getElementById("admin-export-area")
               .classList.remove("hidden");
             _loadCfg();
+            const _sf = document.getElementById("status-filter");
+            if (_sf && !_sf.querySelector('option[value="__RAPOARTE__"]'))
+              _sf.add(new Option("⏳ Rapoarte de aprobat", "__RAPOARTE__"));
           }
           document.getElementById("c-data-auto").value = getRoTime();
           const hRow = document.getElementById("table-head-row");
@@ -1222,7 +1238,6 @@
 
           loadFise();
           _startRealtime();
-          initClientAutocomplete();
         } else {
           if (!storedU) alert("Date incorecte!");
           else localStorage.removeItem("geeli_session");
@@ -1285,21 +1300,21 @@
         const body = document.getElementById("users-rows");
         const rows = (data || []).map(
           (u) => `<tr class="border-b border-slate-100 hover:bg-slate-50">
-                    <td class="p-4 font-black text-slate-900">${u.nume_complet}</td>
-                    <td class="p-4 font-mono font-bold text-blue-600">${u.username}</td>
-                    <td class="p-4 text-xs font-bold text-slate-700">${u.service}</td>
+                    <td class="p-4 font-black text-slate-900">${esc(u.nume_complet)}</td>
+                    <td class="p-4 font-mono font-bold text-blue-600">${esc(u.username)}</td>
+                    <td class="p-4 text-xs font-bold text-slate-700">${esc(u.service)}</td>
                     <td class="p-4">
                         <span class="px-2 py-1 rounded text-[9px] font-black uppercase text-white 
                         ${u.rol === "admin" ? "bg-red-600" : u.rol === "user" ? "bg-green-600" : "bg-slate-500"}">
-                        ${u.rol || "none"}
+                        ${esc(u.rol) || "none"}
                         </span>
                     </td>
                     <td class="p-4 text-center flex gap-2 justify-center">
                         ${
                           u.username !== activeUser.username
                             ? `
-                            <button onclick="toggleUserRole('${u.id}', '${u.rol}')" class="bg-blue-100 text-blue-600 px-2 py-1 rounded font-black text-[9px]">⇄ROL</button>
-                            <button onclick="deleteUser('${u.username}')" class="bg-red-100 text-red-600 px-2 py-1 rounded font-black text-[9px]">ȘTERGE</button>
+                            <button onclick="toggleUserRole('${esc(u.id)}', '${esc(u.rol)}')" class="bg-blue-100 text-blue-600 px-2 py-1 rounded font-black text-[9px]">⇄ROL</button>
+                            <button onclick="deleteUser('${esc(u.username)}')" class="bg-red-100 text-red-600 px-2 py-1 rounded font-black text-[9px]">ȘTERGE</button>
                         `
                             : '<span class="text-[9px] italic text-slate-400">Activ</span>'
                         }
@@ -1351,26 +1366,26 @@
               : "";
         const transportHtml =
           activeUser.rol === "admin" || activeUser.service === "RIDICARE"
-            ? `<td class="p-4 font-black text-[10px] ${transportStyle}">${f.tip_transport || ""}</td>`
+            ? `<td class="p-4 font-black text-[10px] ${transportStyle}">${esc(f.tip_transport)}</td>`
             : "";
-        return `<tr data-fisa-id="${f.id}" onclick='if(!event.target.closest(".log-btn") && !event.target.closest(".factura-btn") && !event.target.closest(".imagini-btn") && !event.target.closest(".deviz-btn")) openFisa(${JSON.stringify(f)})' class="border-b border-slate-300 hover:bg-slate-50 cursor-pointer transition-colors">
+        return `<tr data-fisa-id="${esc(f.id)}" onclick='if(!event.target.closest(".log-btn") && !event.target.closest(".factura-btn") && !event.target.closest(".imagini-btn") && !event.target.closest(".deviz-btn")) openFisa(_fisaMap.get(this.dataset.fisaId))' class="border-b border-slate-300 hover:bg-slate-50 cursor-pointer transition-colors">
         ${activeUser.rol === "admin" || activeUser.rol === "user" ? `<td class="p-4 border-r border-slate-300 font-black text-slate-400 text-xs whitespace-nowrap">${globalNrCrt}${!f.data_preluare_fizica ? `<sup style="display:inline-block;width:7px;height:7px;background:#ef4444;border-radius:50%;margin-left:3px;vertical-align:super;line-height:1;" title="Lipsă Data Predării Fizice"></sup>` : ""}</td>` : ""}
 
     <td class="p-4 border-r border-slate-300 font-mono font-black text-blue-700 text-xs">
-        ${f.id}
+        ${esc(f.id)}
         ${
           activeUser.rol === "admin"
             ? `<button
-            onclick="event.stopPropagation(); openLogModal('${f.id}')"
+            onclick="event.stopPropagation(); openLogModal('${esc(f.id)}')"
             class="log-btn inline-block ml-1 align-middle bg-slate-200 hover:bg-slate-300 text-slate-700 font-black text-[8px] px-1.5 py-0.5 rounded transition-colors uppercase leading-none"
             title="Istoric acțiuni fișă">LOG</button>`
             : ""
         }
     </td>
 <td class="p-4 border-r border-slate-300 font-black text-slate-900">
-    ${f.nume_client}<br>
+    ${esc(f.nume_client)}<br>
     <span class="text-blue-600 font-black uppercase text-[10px] inline-flex items-center gap-1">
-        ${f.tel_client || ""}
+        ${esc(f.tel_client)}
         
         ${
           f.tel_client
@@ -1388,18 +1403,18 @@
             : ""
         }
 
-        ${f.judet_client ? " | " + f.judet_client : ""}
+        ${f.judet_client ? " | " + esc(f.judet_client) : ""}
     </span>
 </td>
-    <td class="p-4 border-r border-slate-300 text-xs font-bold text-slate-800" data-vin="${f.vin_produs}">
-        ${f.marca_model}<br>
-        <span class="text-blue-600 font-black uppercase text-[10px]">${f.vin_produs}</span>
+    <td class="p-4 border-r border-slate-300 text-xs font-bold text-slate-800" data-vin="${esc(f.vin_produs)}">
+        ${esc(f.marca_model)}<br>
+        <span class="text-blue-600 font-black uppercase text-[10px]">${esc(f.vin_produs)}</span>
         <span class="vin-check-icon ml-1 text-xs"></span>
         ${
           activeUser.rol === "admin"
             ? `<br><button
             type="button"
-            onclick="event.stopPropagation(); openDeviz(_fisaMap.get('${f.id}'))"
+            onclick="event.stopPropagation(); openDeviz(_fisaMap.get('${esc(f.id)}'))"
             class="deviz-btn mt-1 inline-flex items-center gap-1 ${f.deviz_den_1 || f.deviz_um_1 || f.deviz_pret_1 ? "bg-blue-950 hover:bg-blue-900" : "bg-slate-400 hover:bg-slate-500"} text-white font-black text-[8px] px-2 py-0.5 rounded transition-colors uppercase leading-none"
             title="Deschide Deviz de lucrări">📋 Deviz</button>`
             : ""
@@ -1414,7 +1429,7 @@
                 class="factura-btn flex items-center justify-center bg-slate-400 hover:bg-blue-700 text-white rounded-lg transition active:scale-95"
                 style="width:28px;height:28px;padding:0;flex-shrink:0;"
                 title="Adaugă / Înlocuiește factură"
-                onclick="event.stopPropagation(); triggerFacturaUploadRow('${f.id}', this)">
+                onclick="event.stopPropagation(); triggerFacturaUploadRow('${esc(f.id)}', this)">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="white" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
             </button>
             <button
@@ -1422,7 +1437,7 @@
                 class="factura-btn flex items-center justify-center rounded-lg transition active:scale-95 ${f.factura_path ? "bg-slate-900 hover:bg-blue-700 text-white cursor-pointer" : "bg-slate-200 text-slate-400 cursor-not-allowed"}"
                 style="width:28px;height:28px;padding:0;flex-shrink:0;"
                 title="${f.factura_path ? "Vizualizează factura" : "Nicio factură atașată"}"
-                ${f.factura_path ? `onclick="event.stopPropagation(); viewFacturaRow('${f.factura_path}')"` : 'disabled onclick="event.stopPropagation()"'}>
+                ${f.factura_path ? `onclick="event.stopPropagation(); viewFacturaRow('${esc(f.factura_path)}')"` : 'disabled onclick="event.stopPropagation()"'}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zm0 12.5c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
             </button>
             <button
@@ -1430,10 +1445,10 @@
                 class="factura-btn flex items-center justify-center rounded-lg transition active:scale-95 ${f.factura_path ? "bg-red-400 hover:bg-red-700 text-white cursor-pointer" : "bg-slate-200 text-slate-400 cursor-not-allowed"}"
                 style="width:28px;height:28px;padding:0;flex-shrink:0;"
                 title="${f.factura_path ? "Șterge factura" : "Nicio factură atașată"}"
-                ${f.factura_path ? `onclick="event.stopPropagation(); deleteFacturaRow('${f.id}', '${f.factura_path}', this)"` : 'disabled onclick="event.stopPropagation()"'}>
+                ${f.factura_path ? `onclick="event.stopPropagation(); deleteFacturaRow('${esc(f.id)}', '${esc(f.factura_path)}', this)"` : 'disabled onclick="event.stopPropagation()"'}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
             </button>
-            <input type="file" accept="image/*,application/pdf" class="hidden factura-row-input" onchange="handleFacturaRowUpload(event, '${f.id}', this)">
+            <input type="file" accept="image/*,application/pdf" class="hidden factura-row-input" onchange="handleFacturaRowUpload(event, '${esc(f.id)}', this)">
         </div>
     </td>`
         : ""
@@ -1449,7 +1464,7 @@
                 class="imagini-btn flex items-center justify-center bg-slate-400 hover:bg-blue-700 text-white rounded-lg transition active:scale-95"
                 style="width:28px;height:28px;padding:0;flex-shrink:0;"
                 title="Adaugă imagini"
-                onclick="triggerImaginiUpload('${f.id}', this)">
+                onclick="triggerImaginiUpload('${esc(f.id)}', this)">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="white" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
             </button>`
                 : `<button type="button" disabled
@@ -1466,7 +1481,7 @@
                 class="imagini-btn flex items-center justify-center rounded-lg transition active:scale-95 ${f.imagini_count > 0 ? "bg-slate-900 hover:bg-slate-700 text-white cursor-pointer" : "bg-slate-400 hover:bg-blue-700 text-white cursor-pointer"}"
                 style="width:28px;height:28px;padding:0;flex-shrink:0;"
                 title="${f.imagini_count > 0 ? `Vezi imagini (${f.imagini_count})` : "Vezi imagini"}"
-                onclick="openImaginiModal('${f.id}', '${f.status}')">
+                onclick="openImaginiModal('${esc(f.id)}', '${esc(f.status)}')">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
             </button>`
                 : `<button type="button" disabled
@@ -1476,7 +1491,7 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
             </button>`
             }
-            <input type="file" accept="image/*" multiple class="hidden imagini-row-input" onchange="handleImaginiUpload(event, '${f.id}', this)">
+            <input type="file" accept="image/*" multiple class="hidden imagini-row-input" onchange="handleImaginiUpload(event, '${esc(f.id)}', this)">
         </div>
     </td>`
         : ""
@@ -1487,20 +1502,21 @@
     </span>
 </td>
     <td class="p-4 border-r border-slate-300 text-[10px] font-black text-center ${vch.color}">
-    ${vch.text}
+    ${esc(vch.text)}
     <br>
     <span class="text-blue-600 uppercase font-black" style="font-size: 8px; display: block; margin-top: 2px;">
-        ${f.tip_garantie || ""}
+        ${esc(f.tip_garantie)}
     </span>
 </td>
     <td class="p-2 md:p-4 border-r border-slate-300 whitespace-nowrap">
     <span class="px-1.5 py-1 rounded-full text-[8px] md:text-[9px] font-black uppercase text-white
     ${f.status === "Finalizat" ? "bg-green-600" : f.status === "Revenire" ? "bg-blue-600" : "bg-amber-500"}">
-        ${f.status}
+        ${esc(f.status)}
     </span>
+    ${activeUser.rol === "admin" && f.status === "Finalizat" && _firmaCuAprobare(f) ? `<span data-aprob-slot="${esc(f.id)}" class="block mt-1"></span>` : ""}
 </td>
-    <td class="p-4 border-r border-slate-300 text-[9px] font-black text-slate-700 italic">${f.alocat_catre}</td>
-    ${activeUser.rol === "admin" ? `<td class="p-4 border-r border-slate-300 text-[9px] font-black text-slate-600">${f.magazin || ""}</td>` : ""}
+    <td class="p-4 border-r border-slate-300 text-[9px] font-black text-slate-700 italic">${esc(f.alocat_catre)}</td>
+    ${activeUser.rol === "admin" ? `<td class="p-4 border-r border-slate-300 text-[9px] font-black text-slate-600">${esc(f.magazin)}</td>` : ""}
     ${transportHtml} </tr>`;
       }
 
@@ -1574,6 +1590,126 @@
                 </div>`;
       }
 
+      // ── APROBARE RAPORT: funcții ──────────────────────────────────────────
+      async function _fetchRapoarteDeAprobat() {
+        const { data } = await _supa
+          .from("fise")
+          .select("id")
+          .eq("is_deleted", false)
+          .eq("status", "Finalizat")
+          .eq("raport_aprobat", false)
+          .or(_firmeOrFilter());
+        return (data || []).map((r) => r.id);
+      }
+
+      async function refreshAprobariBanner() {
+        const el = document.getElementById("aprobari-banner");
+        if (!el) return;
+        const ids = await _fetchRapoarteDeAprobat();
+        if (!ids.length) {
+          el.className = "hidden";
+          el.innerHTML = "";
+          return;
+        }
+        el.className =
+          "mb-4 bg-amber-50 border-2 border-amber-300 rounded-xl p-3 flex flex-wrap items-center justify-between gap-2 no-print";
+        el.innerHTML = `<span class="text-xs font-black text-amber-900 uppercase">⏳ ${ids.length} ${ids.length === 1 ? "raport așteaptă" : "rapoarte așteaptă"} aprobarea (${esc(FIRME_RAPORT_APROBARE.join(", "))})</span>
+          <button type="button" onclick="arataRapoarteDeAprobat()" class="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg font-black text-[10px] uppercase">Arată</button>`;
+      }
+
+      function arataRapoarteDeAprobat() {
+        const sf = document.getElementById("status-filter");
+        if (!sf) return;
+        sf.value = "__RAPOARTE__";
+        handleStatusChange();
+      }
+
+      async function loadAprobariRanduri(rows) {
+        const ids = rows
+          .filter((f) => f.status === "Finalizat" && _firmaCuAprobare(f))
+          .map((f) => f.id);
+        if (!ids.length) return;
+        const { data, error } = await _supa
+          .from("fise")
+          .select("id, raport_aprobat")
+          .in("id", ids);
+        if (error || !data) return;
+        data.forEach((r) => {
+          const slot = document.querySelector(
+            `[data-aprob-slot="${CSS.escape(String(r.id))}"]`,
+          );
+          if (!slot) return;
+          slot.innerHTML = r.raport_aprobat
+            ? '<span class="inline-block px-1.5 py-0.5 rounded text-[8px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">✔ Raport aprobat</span>'
+            : '<span class="inline-block px-1.5 py-0.5 rounded text-[8px] font-black uppercase bg-amber-100 text-amber-800 border border-amber-300">⏳ Raport de aprobat</span>';
+        });
+      }
+
+      async function renderAprobareBox(f) {
+        const box = document.getElementById("aprobare-box");
+        if (!box) return;
+        const { data, error } = await _supa
+          .from("fise")
+          .select(
+            "raport_aprobat, raport_aprobat_de, raport_aprobat_la, raport_vazut_la, raport_reparatie",
+          )
+          .eq("id", f.id)
+          .maybeSingle();
+        if (!currentFisa || currentFisa.id !== f.id) return;
+        if (error || !data) {
+          box.innerHTML = `<span class="text-red-700">Starea aprobării nu poate fi încărcată. Verificați dacă scriptul SQL a fost rulat în Supabase.</span>`;
+          return;
+        }
+        const fmt = (d) =>
+          d
+            ? new Date(d).toLocaleString("ro-RO", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : "-";
+        const titlu = `<span class="text-[10px] font-black uppercase text-slate-800 block mb-2">Aprobare raport pentru ${esc(f.magazin)} (ADMIN)</span>`;
+        if (data.raport_aprobat) {
+          box.className =
+            "bg-emerald-50 border-2 border-emerald-300 p-4 rounded-xl text-slate-900 text-[11px] font-bold";
+          box.innerHTML = `${titlu}
+            <p class="mb-2">✔ Raport APROBAT de <b>${esc(data.raport_aprobat_de) || "-"}</b> la ${esc(fmt(data.raport_aprobat_la))}. Vizualizat de firmă: <b>${data.raport_vazut_la ? "da (" + esc(fmt(data.raport_vazut_la)) + ")" : "nu încă"}</b>.</p>
+            <button onclick="setAprobareRaport(false)" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-black text-[10px] uppercase active:scale-95">Retrage aprobarea</button>`;
+        } else {
+          box.className =
+            "bg-amber-50 border-2 border-amber-300 p-4 rounded-xl text-slate-900 text-[11px] font-bold";
+          const gol =
+            !data.raport_reparatie || !String(data.raport_reparatie).trim();
+          box.innerHTML = `${titlu}
+            <p class="mb-2">⏳ Raport NEAPROBAT. Firma vede „în verificare". Verificați raportul de mai sus înainte de aprobare.${gol ? ' <b class="text-red-700">Atenție: raportul de reparații este gol.</b>' : ""}</p>
+            <button onclick="setAprobareRaport(true)" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-black text-[10px] uppercase active:scale-95">Aprobă raportul</button>`;
+        }
+      }
+
+      async function setAprobareRaport(aprobat) {
+        if (!currentFisa || activeUser.rol !== "admin") return;
+        const msg = aprobat
+          ? `Aprobați raportul fișei ${currentFisa.id}? Firma ${currentFisa.magazin} îl va putea vizualiza.`
+          : `Retrageți aprobarea raportului fișei ${currentFisa.id}? Firma va vedea „în verificare".`;
+        if (!confirm(msg)) return;
+        const { error } = await _supa.rpc("aproba_raport_firma", {
+          p_fisa_id: currentFisa.id,
+          p_username: activeUser.username,
+          p_password: activeUser.password,
+          p_aprobat: aprobat,
+        });
+        if (error) {
+          alert("Eroare la aprobare: " + error.message);
+          return;
+        }
+        await renderAprobareBox(currentFisa);
+        refreshAprobariBanner();
+        loadAprobariRanduri([currentFisa]);
+      }
+      // ── END APROBARE RAPORT ───────────────────────────────────────────────
+
       function handleStatusChange() {
         const statusValue = document.getElementById("status-filter").value;
         currentStatusFilter = statusValue;
@@ -1593,7 +1729,16 @@
           query = query.eq("alocat_catre", activeUser.service);
         }
 
-        if (currentStatusFilter !== "Toate") {
+        if (currentStatusFilter === "__RAPOARTE__") {
+          query = query
+            .eq("status", "Finalizat")
+            .in(
+              "id",
+              _idsRapoarteDeAprobat.length
+                ? _idsRapoarteDeAprobat
+                : ["__nimic__"],
+            );
+        } else if (currentStatusFilter !== "Toate") {
           query = query.eq("status", currentStatusFilter);
         }
 
@@ -1633,6 +1778,7 @@
 
         currentPage = page;
         updateArchiveCounter();
+        if (activeUser.rol === "admin") refreshAprobariBanner();
 
         if (activeUser.rol === "admin") {
           let totalQ = _supa
@@ -1643,6 +1789,8 @@
           totalFiseCount = dbCount || 0;
         }
 
+        if (currentStatusFilter === "__RAPOARTE__")
+          _idsRapoarteDeAprobat = await _fetchRapoarteDeAprobat();
         const { count: filteredCount } = await buildBaseQuery(true);
         totalFilteredCount = filteredCount || 0;
 
@@ -1683,6 +1831,7 @@
 
         renderPagination(page, totalPages, totalFilteredCount, totalFiseCount);
         checkVinList(data);
+        if (activeUser.rol === "admin") loadAprobariRanduri(data);
       }
 
       async function checkVinList(fise) {
@@ -2045,20 +2194,20 @@
                 <div class="flex-grow">
                     <div class="mb-1 -mt-4"><img src="https://i.ibb.co/DfD2pcmk/20260302-184328.png" alt="Antet" class="max-w-[150px] md:max-w-[180px] h-auto object-contain"></div>
                     <div class="flex justify-between border-b-4 md:border-b-8 border-slate-900 pb-4 md:pb-6 mb-2">
-                        <div><h1 class="text-xl md:text-2xl font-black italic uppercase text-slate-900">Fișă Service</h1><p class="font-mono text-sm md:text-lg text-blue-700 font-black">#${f.id}</p></div>
+                        <div><h1 class="text-xl md:text-2xl font-black italic uppercase text-slate-900">Fișă Service</h1><p class="font-mono text-sm md:text-lg text-blue-700 font-black">#${esc(f.id)}</p></div>
                         <div class="text-right">
-                            <p class="font-black px-4 py-1 md:px-6 md:py-2 rounded text-white uppercase mb-1 text-[10px] md:text-sm shadow-md ${f.status === "Finalizat" ? "bg-green-600" : f.status === "Revenire" ? "bg-blue-600" : "bg-amber-500"}">${f.status}</p>
-                            <p class="text-[9px] md:text-[11px] font-black ${vch.color}">${vch.text}</p>
+                            <p class="font-black px-4 py-1 md:px-6 md:py-2 rounded text-white uppercase mb-1 text-[10px] md:text-sm shadow-md ${f.status === "Finalizat" ? "bg-green-600" : f.status === "Revenire" ? "bg-blue-600" : "bg-amber-500"}">${esc(f.status)}</p>
+                            <p class="text-[9px] md:text-[11px] font-black ${vch.color}">${esc(vch.text)}</p>
                         </div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-10 text-[11px] md:text-[13px] mb-6">
                         <div class="space-y-1 md:space-y-2">
                             <h4 class="font-black border-b-2 border-slate-900 text-slate-900 uppercase text-[9px] md:text-[11px] pb-1 tracking-widest">1. Date Client</h4>
-                            <p><b>NUME:</b> ${f.nume_client}</p>
-                            <p><b>TEL:</b> ${f.tel_client || "-"}</p>
-                            <p><b>EMAIL:</b> ${f.email_client || "-"}</p>
-                            <p><b>ADRESA:</b> ${f.adresa_client || "-"}</p>
-                            <p><b>JUDEȚ:</b> ${f.judet_client || "-"}</p>
+                            <p><b>NUME:</b> ${esc(f.nume_client)}</p>
+                            <p><b>TEL:</b> ${esc(f.tel_client) || "-"}</p>
+                            <p><b>EMAIL:</b> ${esc(f.email_client) || "-"}</p>
+                            <p><b>ADRESA:</b> ${esc(f.adresa_client) || "-"}</p>
+                            <p><b>JUDEȚ:</b> ${esc(f.judet_client) || "-"}</p>
                             <p><b>DATA ÎNREG.:</b> ${
                               f.created_at
                                 ? (() => {
@@ -2073,38 +2222,38 @@
                         </div>
                         <div class="space-y-1 md:space-y-2">
                             <h4 class="font-black border-b-2 border-slate-900 text-slate-900 uppercase text-[9px] md:text-[11px] pb-1 tracking-widest">2. Date Produs</h4>
-                            <p><b>CATEGORIE:</b> ${f.categorie}</p>
-                            <p><b>MODEL:</b> ${f.marca_model}</p>
-                            <p><b>VIN:</b> <span class="text-blue-700 font-black uppercase font-mono">${f.vin_produs}</span></p>
-                            <p><b class="font-black">EMITENT FACTURĂ:</b> ${f.magazin || "-"}</p>
-                            <p><b class="font-black">NR. FACTURĂ:</b> ${f.nr_factura || "-"} / ${f.data_factura ? f.data_factura.split("-").reverse().join("-") : "-"}</p>
+                            <p><b>CATEGORIE:</b> ${esc(f.categorie)}</p>
+                            <p><b>MODEL:</b> ${esc(f.marca_model)}</p>
+                            <p><b>VIN:</b> <span class="text-blue-700 font-black uppercase font-mono">${esc(f.vin_produs)}</span></p>
+                            <p><b class="font-black">EMITENT FACTURĂ:</b> ${esc(f.magazin) || "-"}</p>
+                            <p><b class="font-black">NR. FACTURĂ:</b> ${esc(f.nr_factura) || "-"} / ${f.data_factura ? f.data_factura.split("-").reverse().join("-") : "-"}</p>
                             <p><b class="font-black">KM. LA DATA SESIZARII:</b> ${f.km_la_sesizare != null ? f.km_la_sesizare + " km" : "-"}</p>
-                            <p><b>GARANȚIE:</b> ${f.tip_garantie}</p>
-                            <p><b class="font-black">OBSERVAȚII:</b> ${f.obs_produs || "-"}</p>
+                            <p><b>GARANȚIE:</b> ${esc(f.tip_garantie)}</p>
+                            <p><b class="font-black">OBSERVAȚII:</b> ${esc(f.obs_produs) || "-"}</p>
                             <p><b class="font-black text-red-700">DATA PREDĂRII FIZICE:</b> ${f.data_preluare_fizica ? f.data_preluare_fizica.split("-").reverse().join("-") : "-"}</p>
                         </div>
                     </div>
                     <div class="bg-slate-100 p-2 md:p-3 border-2 border-slate-200 italic mb-3 text-[11px] md:text-[13px] text-slate-900 rounded-lg">
                         <h4 class="font-black uppercase text-[9px] md:text-[11px] mb-2 border-b-2 border-slate-300 pb-1">3. Reclamație Client:</h4>
-                        <div class="font-bold leading-relaxed whitespace-pre-wrap">${f.reclamatie_client}</div>
+                        <div class="font-bold leading-relaxed whitespace-pre-wrap">${esc(f.reclamatie_client)}</div>
                     </div>
                     <div class="border-t-2 md:border-t-4 border-slate-900 pt-4 md:pt-6">
     <h4 class="font-black bg-slate-900 text-white px-3 py-1 text-[9px] md:text-[11px] inline-block mb-1 uppercase tracking-widest">Raport Tehnic Service</h4>
     <div class="grid grid-cols-1 md:grid-cols-4 gap-2 md:gap-6 text-[10px] md:text-[12px] font-black mb-4 border-b pb-2 border-slate-100">
-        <p>ALOCAT: <span class="text-blue-700">${f.alocat_catre}</span></p>
-        <p>TEHNICIAN: <span class="text-blue-700">${f.tehnician || "-"}</span></p>
-        <p>KM/ORE: <span class="text-blue-700">${f.km || "-"}/${f.ore || "-"}</span></p>
-        <p>COST: <span class="text-blue-700">${f.cost || "-"}</span></p>
-        <p>FACTURĂ: <span class="text-blue-700">${f.emitent_factura_service || "-"}</span></p>
+        <p>ALOCAT: <span class="text-blue-700">${esc(f.alocat_catre)}</span></p>
+        <p>TEHNICIAN: <span class="text-blue-700">${esc(f.tehnician) || "-"}</span></p>
+        <p>KM/ORE: <span class="text-blue-700">${esc(f.km) || "-"}/${esc(f.ore) || "-"}</span></p>
+        <p>COST: <span class="text-blue-700">${esc(f.cost) || "-"}</span></p>
+        <p>FACTURĂ: <span class="text-blue-700">${esc(f.emitent_factura_service) || "-"}</span></p>
     </div>
-                <div class="p-2 md:p-4 border-2 border-slate-100 bg-blue-50/30 text-[11px] md:text-[13px] font-bold text-slate-900 min-h-[40px] whitespace-pre-line rounded-xl">${f.raport_reparatie ? f.raport_reparatie.trim() : "Diagnosticare în curs..."}</div>
+                <div class="p-2 md:p-4 border-2 border-slate-100 bg-blue-50/30 text-[11px] md:text-[13px] font-bold text-slate-900 min-h-[40px] whitespace-pre-line rounded-xl">${f.raport_reparatie ? esc(f.raport_reparatie.trim()) : "Diagnosticare în curs..."}</div>
                     ${(() => {
                       if (f.tip_garantie !== "In garantie") return "";
                       const pieseList = [];
                       for (let i = 1; i <= 12; i++) {
                         if (f[`piesa_${i}_denumire`]) {
                           pieseList.push(
-                            `<span class="inline-flex items-center gap-1 bg-slate-800 text-white px-2 py-0.5 rounded text-[10px] font-bold uppercase">${f[`piesa_${i}_denumire`]} <span class="text-slate-400">×${f[`piesa_${i}_buc`] || 1}</span></span>`,
+                            `<span class="inline-flex items-center gap-1 bg-slate-800 text-white px-2 py-0.5 rounded text-[10px] font-bold uppercase">${esc(f[`piesa_${i}_denumire`])} <span class="text-slate-400">×${f[`piesa_${i}_buc`] || 1}</span></span>`,
                           );
                         }
                       }
@@ -2154,7 +2303,7 @@
         <span class="text-[10px] font-black uppercase text-slate-800">Alocare, Status & Transport (ADMIN):</span>
         <div class="flex flex-wrap gap-2">
             <select id="sel-aloca" class="flex-grow p-2 border-2 border-slate-300 rounded-lg font-black text-[10px] bg-white text-slate-900">
-                <option value="${f.alocat_catre}">${f.alocat_catre}</option>
+                <option value="${esc(f.alocat_catre)}">${esc(f.alocat_catre)}</option>
                 <option value="Propriu">1. Service Propriu</option>
                 <option value="SERVICE PROPRIU 1">2. SERVICE PROPRIU 1</option>
                 <option value="SERVICE PROPRIU 2">3. SERVICE PROPRIU 2</option>
@@ -2187,6 +2336,13 @@
                       : ""
                   }
                     ${
+                      activeUser.rol === "admin" &&
+                      f.status === "Finalizat" &&
+                      _firmaCuAprobare(f)
+                        ? `<div id="aprobare-box" class="bg-amber-50 border-2 border-amber-300 p-4 rounded-xl text-slate-900 text-[11px] font-bold">Se încarcă starea aprobării...</div>`
+                        : ""
+                    }
+                    ${
                       canEditReport
                         ? `
                         <div class="bg-blue-700 p-4 md:p-8 rounded-2xl text-white shadow-2xl">
@@ -2209,30 +2365,30 @@
                             }
     <div> 
         <label class="text-[9px] font-black text-white uppercase ml-1">Tehnician</label>
-        <input type="text" id="s-teh" value="${f.tehnician || ""}" placeholder="Tehnician" class="w-full p-3 rounded-lg text-xs font-bold border-2">
+        <input type="text" id="s-teh" value="${esc(f.tehnician)}" placeholder="Tehnician" class="w-full p-3 rounded-lg text-xs font-bold border-2">
     </div>
 
     <div> 
         <label class="text-[9px] font-black text-white uppercase ml-1">Km.</label>
-        <input type="text" id="s-km" value="${f.km || ""}" placeholder="Km" class="w-full p-3 rounded-lg text-xs font-bold border-2">
+        <input type="text" id="s-km" value="${esc(f.km)}" placeholder="Km" class="w-full p-3 rounded-lg text-xs font-bold border-2">
     </div>
     <div> 
         <label class="text-[9px] font-black text-white uppercase ml-1">Ore</label>
-        <input type="text" id="s-ore" value="${f.ore || ""}" placeholder="Ore" class="w-full p-3 rounded-lg text-xs font-bold border-2">
+        <input type="text" id="s-ore" value="${esc(f.ore)}" placeholder="Ore" class="w-full p-3 rounded-lg text-xs font-bold border-2">
     </div>
     <div> 
         <label class="text-[9px] font-black text-white uppercase ml-1">Cost</label>
-        <input type="text" id="s-cost" value="${f.cost || ""}" placeholder="Cost" class="w-full p-3 rounded-lg text-xs font-bold border-2">
+        <input type="text" id="s-cost" value="${esc(f.cost)}" placeholder="Cost" class="w-full p-3 rounded-lg text-xs font-bold border-2">
     </div>
     <div> 
         <label class="text-[9px] font-black text-white uppercase ml-1">Factura</label> 
-        <input type="text" id="s-emi" value="${f.emitent_factura_service || ""}" placeholder="Factura" class="w-full p-3 rounded-lg text-xs font-bold border-2">
+        <input type="text" id="s-emi" value="${esc(f.emitent_factura_service)}" placeholder="Factura" class="w-full p-3 rounded-lg text-xs font-bold border-2">
     </div>
     </div>
    <div class="col-span-1 sm:col-span-2 md:col-span-full"> 
     <label class="text-[9px] font-black text-white uppercase ml-1">Raport Reparații / Observații</label>
     <textarea id="s-rap" placeholder="Descrieți lucrarea..." 
-              class="w-full p-3 rounded-xl text-slate-900 text-xs font-bold mb-4 h-24 border-2">${f.raport_reparatie || ""}</textarea>
+              class="w-full p-3 rounded-xl text-slate-900 text-xs font-bold mb-4 h-24 border-2">${esc(f.raport_reparatie)}</textarea>
 </div>
 ${f.tip_garantie === "In garantie" ? renderPieseSection(f, true) : ""}
           <div class="flex flex-col md:flex-row gap-2 mt-3">
@@ -2243,6 +2399,12 @@ ${f.tip_garantie === "In garantie" ? renderPieseSection(f, true) : ""}
                         : ""
                     }
                 </div>`;
+        if (
+          activeUser.rol === "admin" &&
+          f.status === "Finalizat" &&
+          _firmaCuAprobare(f)
+        )
+          renderAprobareBox(f);
       }
 
       async function saveAlocare() {
@@ -2642,12 +2804,12 @@ ${f.tip_garantie === "In garantie" ? renderPieseSection(f, true) : ""}
               : "-";
             return `
         <tr class="hover:bg-red-50 transition-colors border-b border-slate-100">
-            <td class="p-3 font-mono text-blue-700">${f.id}</td>
-            <td class="p-3">${dataSters}</td>
-            <td class="p-3">${f.deleted_by_name || "-"}</td>
-            <td class="p-3 text-slate-500 uppercase">${f.deleted_by_username || "-"}</td>
+            <td class="p-3 font-mono text-blue-700">${esc(f.id)}</td>
+            <td class="p-3">${esc(dataSters)}</td>
+            <td class="p-3">${esc(f.deleted_by_name) || "-"}</td>
+            <td class="p-3 text-slate-500 uppercase">${esc(f.deleted_by_username) || "-"}</td>
             <td class="p-3 text-right">
-                <button onclick="restoreFisa('${f.id}')" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-[10px] font-black uppercase transition shadow-sm">
+                <button onclick="restoreFisa('${esc(f.id)}')" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-[10px] font-black uppercase transition shadow-sm">
                     Restabilire
                 </button>
             </td>
@@ -2828,10 +2990,10 @@ ${f.tip_garantie === "In garantie" ? renderPieseSection(f, true) : ""}
                 : "bg-blue-100 text-blue-700";
             return `<tr class="border-b border-slate-100">
             <td class="p-3">
-              <span class="px-2 py-0.5 rounded font-black text-[10px] uppercase ${badgeClass}">${row.actiune}</span>
+              <span class="px-2 py-0.5 rounded font-black text-[10px] uppercase ${badgeClass}">${esc(row.actiune)}</span>
             </td>
-            <td class="p-3 text-xs font-bold text-slate-700 whitespace-nowrap">${dataOra}</td>
-            <td class="p-3 text-xs font-bold text-slate-900">${row.user_nume || ""} <span class="text-slate-400 font-normal">(${row.user_username || ""})</span></td>
+            <td class="p-3 text-xs font-bold text-slate-700 whitespace-nowrap">${esc(dataOra)}</td>
+            <td class="p-3 text-xs font-bold text-slate-900">${esc(row.user_nume) || ""} <span class="text-slate-400 font-normal">(${esc(row.user_username) || ""})</span></td>
           </tr>`;
           })
           .join("");
@@ -3801,12 +3963,12 @@ ${f.tip_garantie === "In garantie" ? renderPieseSection(f, true) : ""}
         div.style.cssText =
           "display:grid; grid-template-columns:3fr 1fr 1fr 1fr 1fr auto; gap:4px; align-items:center;";
         div.innerHTML = `
-          <input type="text" id="deviz-den-${idx}" value="${den || ""}" placeholder="Denumire piesă / lucrare"
+          <input type="text" id="deviz-den-${idx}" value="${esc(den)}" placeholder="Denumire piesă / lucrare"
             style="padding:4px 6px; border:1px solid #cbd5e1; border-radius:4px; font-size:10px; font-weight:600;">
           <input type="number" id="deviz-um-${idx}" value="${um != null ? um : ""}" placeholder="Cantitate" min="0" step="0.01"
             oninput="_recalcDevizRow(${idx})"
             style="padding:4px 6px; border:1px solid #cbd5e1; border-radius:4px; font-size:10px; font-weight:600; text-align:center;">
-          <input type="text" id="deviz-um-text-${idx}" value="${umText || ""}" placeholder="U.M."
+          <input type="text" id="deviz-um-text-${idx}" value="${esc(umText)}" placeholder="U.M."
             style="padding:4px 6px; border:1px solid #cbd5e1; border-radius:4px; font-size:10px; font-weight:600; text-align:center;">
           <input type="number" id="deviz-pret-${idx}" value="${pret != null ? pret : ""}" placeholder="Preț unit." min="0" step="0.01"
             oninput="_recalcDevizRow(${idx})"
@@ -3964,131 +4126,6 @@ ${f.tip_garantie === "In garantie" ? renderPieseSection(f, true) : ""}
       // ── END DEVIZ DE LUCRĂRI ─────────────────────────────────────────────────
 
       // ── END SUPABASE REALTIME ─────────────────────────────────────────────
-
-      // ── AUTOCOMPLETE NUME CLIENT ──────────────────────────────────────────
-      function initClientAutocomplete() {
-        const input = document.getElementById("c-nume");
-        const dropdown = document.getElementById("c-nume-dropdown");
-        if (!input || !dropdown) return;
-
-        let _acTimer = null;
-
-        input.addEventListener("input", () => {
-          clearTimeout(_acTimer);
-          const q = input.value.trim();
-          if (q.length < 2) {
-            dropdown.style.display = "none";
-            return;
-          }
-          _acTimer = setTimeout(() => searchClientNume(q), 280);
-        });
-
-        input.addEventListener("keydown", (e) => {
-          if (e.key === "Escape") {
-            dropdown.style.display = "none";
-          }
-          if (e.key === "ArrowDown") {
-            const first = dropdown.querySelector(".ac-item");
-            if (first) first.focus();
-            e.preventDefault();
-          }
-        });
-
-        document.addEventListener("click", (e) => {
-          if (!input.contains(e.target) && !dropdown.contains(e.target))
-            dropdown.style.display = "none";
-        });
-      }
-
-      async function searchClientNume(q) {
-        const dropdown = document.getElementById("c-nume-dropdown");
-        dropdown.innerHTML =
-          '<div style="padding:10px 14px;font-size:11px;font-weight:700;color:#64748b;">Se caută...</div>';
-        dropdown.style.display = "block";
-
-        const { data, error } = await _supa
-          .from("fise")
-          .select(
-            "id, nume_client, tel_client, email_client, adresa_client, judet_client",
-          )
-          .ilike("nume_client", `%${q}%`)
-          .eq("is_deleted", false)
-          .order("updated_at", { ascending: false })
-          .limit(8);
-
-        if (error || !data || data.length === 0) {
-          dropdown.innerHTML =
-            '<div style="padding:10px 14px;font-size:11px;font-weight:700;color:#94a3b8;font-style:italic;">Niciun client găsit — introduceți manual</div>';
-          return;
-        }
-
-        // Deduplicare după nume_client (păstrăm prima apariție — cea mai recentă)
-        const seen = new Set();
-        const unici = data.filter((f) => {
-          const key = f.nume_client.trim().toLowerCase();
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-
-        dropdown.innerHTML = unici
-          .map(
-            (f, idx) => `
-          <div
-            class="ac-item"
-            tabindex="0"
-            data-idx="${idx}"
-            style="padding:9px 14px;cursor:pointer;border-bottom:1px solid #e2e8f0;font-size:12px;outline:none;transition:background 0.12s;"
-            onmouseenter="this.style.background='#eff6ff'"
-            onmouseleave="this.style.background=''"
-            onfocus="this.style.background='#eff6ff'"
-            onblur="this.style.background=''"
-            onclick="selectClientAC(${JSON.stringify(f).replace(/"/g, "&quot;")})"
-            onkeydown="handleAcKeydown(event, ${JSON.stringify(f).replace(/"/g, "&quot;")})"
-          >
-            <span style="font-weight:900;color:#1e293b;">${f.nume_client}</span>
-            ${f.tel_client ? `<span style="margin-left:8px;font-weight:700;color:#2563eb;font-size:11px;">${f.tel_client}</span>` : ""}
-            ${f.judet_client ? `<span style="margin-left:6px;font-size:10px;color:#64748b;font-weight:700;">(${f.judet_client})</span>` : ""} 
-            <span style="margin-left:8px;font-size:10px;font-weight:700;color:#000000;font-family:monospace;">${f.id}</span>
-          </div>
-        `,
-          )
-          .join("");
-      }
-
-      function selectClientAC(f) {
-        document.getElementById("c-nume").value = f.nume_client;
-        document.getElementById("c-tel").value = f.tel_client || "";
-        document.getElementById("c-email").value = f.email_client || "";
-        document.getElementById("c-adr").value = f.adresa_client || "";
-        if (f.judet_client)
-          document.getElementById("c-judet").value = f.judet_client;
-        document.getElementById("c-nume-dropdown").style.display = "none";
-        document.getElementById("c-nume").focus();
-      }
-
-      function handleAcKeydown(e, f) {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          selectClientAC(f);
-        }
-        if (e.key === "ArrowDown") {
-          const next = e.currentTarget.nextElementSibling;
-          if (next) next.focus();
-          e.preventDefault();
-        }
-        if (e.key === "ArrowUp") {
-          const prev = e.currentTarget.previousElementSibling;
-          if (prev) prev.focus();
-          else document.getElementById("c-nume").focus();
-          e.preventDefault();
-        }
-        if (e.key === "Escape") {
-          document.getElementById("c-nume-dropdown").style.display = "none";
-          document.getElementById("c-nume").focus();
-        }
-      }
-      // ── END AUTOCOMPLETE NUME CLIENT ──────────────────────────────────────
     </script>
     <div
       id="modal-archive"
