@@ -1466,9 +1466,13 @@
             "postgres_changes",
             { event: "*", schema: "public", table: "asm_produse" },
             () => {
-              if (!F && tab !== "preia" && !document.querySelector(".ov")) {
+              if (
+                !F &&
+                ["lucru", "remediat", "ctc", "prioritare", "stadii"].includes(tab) &&
+                !document.querySelector(".ov")
+              ) {
                 clearTimeout(rt._d);
-                rt._d = setTimeout(() => go(tab), 600);
+                rt._d = setTimeout(() => go(tab), 1500);
               }
             },
           )
@@ -1793,37 +1797,95 @@
             )
             .join("") || '<div class="mut">Nimic în lucru.</div>');
       }
-      const listQ = {};
+      /* Coloanele necesare listelor de produse (verificate pe schema din baza de date) */
+      const PL_COLS =
+        "id,vin,model,culoare,stadiu,operator_curent,updated_at,nr_remedieri,sursa_remediere,ctc_solicitat_la,ctc_solicitat_de,ctc_solicitat_de_nume";
+
+      /* ---------- Utilitare pentru volume mari ---------- */
+      const PAGE_MAX = 1000; /* limita implicită Supabase/PostgREST pe un răspuns */
+      /* Citește toate paginile unei interogări (mk(de, până) întoarce interogarea cu .range aplicat).
+         Întoarce { rows, truncated } – truncated = true dacă s-a atins plafonul "max". */
+      async function fetchAll(mk, max = 20000) {
+        const rows = [];
+        for (let from = 0; from < max; from += PAGE_MAX) {
+          const { data, error } = await mk(from, from + PAGE_MAX - 1);
+          if (error) throw error;
+          rows.push(...(data || []));
+          if (!data || data.length < PAGE_MAX) return { rows, truncated: false };
+        }
+        return { rows, truncated: true };
+      }
+      /* .in("col", ids) cu liste lungi depășește lungimea URL-ului: se sparge în pachete. */
+      async function inChunks(ids, mk, size = 100) {
+        const parts = [];
+        for (let i = 0; i < ids.length; i += size) parts.push(ids.slice(i, i + size));
+        const res = await Promise.all(parts.map(mk));
+        return res.flatMap((r) => r.data || []);
+      }
+      const likeSafe = (q) => String(q || "").trim().replace(/[%_\\]/g, "");
+      const debounce = (fn, ms = 300) => {
+        let t;
+        return (...a) => {
+          clearTimeout(t);
+          t = setTimeout(() => fn(...a), ms);
+        };
+      };
+      const listQ = {},
+        listLim = {};
       async function listaStadiu(c, st, btn, lbl, extra) {
-        const { data } = await sb
-          .from("asm_produse")
-          .select("*")
-          .eq("stadiu", st)
-          .is("operator_curent", null)
-          .order("updated_at");
-        const all = data || [];
-        c.innerHTML = `<div class="card"><input id="lq" placeholder="Caută VIN (parțial, minim 3 caractere)..." value="${esc(listQ[st] || "")}" style="max-width:300px;margin-bottom:8px" autocomplete="off"><div id="lst" class="list-scroll"></div></div>`;
-        const draw = () => {
-          const q = (listQ[st] || "").trim().toLowerCase();
-          const filtered =
-            q.length >= 3
-              ? all.filter((p) => (p.vin || "").toLowerCase().includes(q))
-              : all;
+        const STEP = 50;
+        if (!listLim[st]) listLim[st] = STEP;
+        c.innerHTML = `<div class="card"><input id="lq" placeholder="Caută VIN (parțial, minim 3 caractere)..." value="${esc(listQ[st] || "")}" style="max-width:300px;margin-bottom:8px" autocomplete="off"><div id="lst" class="list-scroll"></div><div id="lmore" style="margin-top:8px"></div></div>`;
+        let seq = 0;
+        const load = async () => {
+          const my = ++seq,
+            q = likeSafe(listQ[st]);
+          let r = sb
+            .from("asm_produse")
+            .select(PL_COLS, { count: "exact" })
+            .eq("stadiu", st)
+            .is("operator_curent", null);
+          if (q.length >= 3) r = r.ilike("vin", `%${q}%`);
+          const { data, count, error } = await r
+            .order("updated_at")
+            .order("id")
+            .limit(listLim[st]);
+          if (my !== seq || !$("#lst")) return;
+          if (error) {
+            $("#lst").innerHTML =
+              '<div class="mut">Eroare la încărcarea listei. Reîncearcă.</div>';
+            return;
+          }
+          const all = data || [],
+            total = count ?? all.length;
           $("#lst").innerHTML =
-            filtered
+            all
               .map(
                 (p) =>
                   `<div class="card row"><div>${prodTxt(p)}<div class="mut">de ${dur(Date.now() - new Date(p.updated_at))}${p.nr_remedieri ? ` · reverificare (remediat de ${p.nr_remedieri}×)` : ""}${extra && p.sursa_remediere ? ` · sursa: ${p.sursa_remediere}` : ""}</div></div><button class="btn" data-a="${btn}" data-id="${p.id}">${lbl}</button></div>`,
               )
               .join("") ||
             '<div class="mut">Niciun produs în această listă.</div>';
+          $("#lmore").innerHTML =
+            total > all.length
+              ? `<span class="mut">Afișate ${all.length} din ${total}. </span>${all.length < PAGE_MAX ? '<button class="btn gh sm" id="lmoreBtn">Arată încă ' + STEP + "</button>" : '<span class="mut">Folosește căutarea după VIN pentru a restrânge lista.</span>'}`
+              : total
+                ? `<span class="mut">${total} produse</span>`
+                : "";
+          const mb = $("#lmoreBtn");
+          if (mb)
+            mb.onclick = () => {
+              listLim[st] = Math.min(PAGE_MAX, listLim[st] + STEP);
+              load();
+            };
           fitListScroll();
         };
-        draw();
-        $("#lq").oninput = (e) => {
+        $("#lq").oninput = debounce((e) => {
           listQ[st] = e.target.value;
-          draw();
-        };
+          listLim[st] = STEP;
+          load();
+        });
+        await load();
       }
       function vRem(c) {
         return listaStadiu(
@@ -1836,16 +1898,18 @@
       }
       /* ---------- PRIORITARE CTC (cerute din Comenzi, aplicația de distribuție) ---------- */
       async function vPrioritare(c) {
-        const { data } = await sb
+        const { data, count } = await sb
           .from("asm_produse")
-          .select("*")
+          .select(PL_COLS, { count: "exact" })
           .eq("ctc_prioritar", true)
           .eq("stadiu", "asteapta_ctc")
           .is("operator_curent", null)
-          .order("ctc_solicitat_la");
+          .order("ctc_solicitat_la")
+          .order("id")
+          .limit(200);
         const all = data || [];
         c.innerHTML =
-          `<div class="mut" style="margin-bottom:8px">Verificări CTC solicitate cu prioritate: ${all.length}</div><div class="list-scroll" id="lst">` +
+          `<div class="mut" style="margin-bottom:8px">Verificări CTC solicitate cu prioritate: ${count ?? all.length}${(count ?? 0) > all.length ? ` (afișate primele ${all.length})` : ""}</div><div class="list-scroll" id="lst">` +
           (all
             .map(
               (p) =>
@@ -2123,57 +2187,84 @@
         staOperatori = [],
         staFiltered = [];
       async function vStadii(c) {
-        const { data } = await sb
-            .from("asm_produse")
-            .select("*")
-            .order("updated_at", { ascending: false })
-            .limit(500),
-          all = data || [],
-          h = 3600e3,
-          now = Date.now();
-        const idsAvizate = all
-          .filter((p) => p.stadiu === "ctc_avizat")
-          .map((p) => p.id);
-        const avizatDe = {};
-        if (idsAvizate.length) {
-          const { data: ctcEt } = await sb
-            .from("asm_etape")
-            .select("asm_produs_id,user_id,ended_at")
-            .eq("tip", "ctc")
-            .not("ended_at", "is", null)
-            .in("asm_produs_id", idsAvizate)
-            .order("ended_at", { ascending: false });
-          (ctcEt || []).forEach((e) => {
-            if (!(e.asm_produs_id in avizatDe))
-              avizatDe[e.asm_produs_id] = e.user_id;
-          });
-        }
-        const late = all.filter(
-          (p) =>
-            p.stadiu === "in_asamblare" &&
-            now - new Date(p.updated_at) > S.prag_alerta_ore * h,
-        ).length;
-        c.innerHTML = `${late ? `<div class="al">⚠️ ${late} produse depășesc pragul de timp în asamblare (> ${S.prag_alerta_ore} h).</div>` : ""}
- <div class="kpis">${Object.keys(ST)
+        c.innerHTML = `<div id="stLate"></div>
+ <div class="kpis" id="stKpis">${Object.keys(ST)
    .map(
      (k) =>
-       `<button class="kpi ${stF === k ? "on" : ""}" data-a="kpi" data-s="${k}"><span class="pill p-${k}">${ST[k]}</span><b>${all.filter((p) => p.stadiu === k).length}</b></button>`,
+       `<button class="kpi ${stF === k ? "on" : ""}" data-a="kpi" data-s="${k}"><span class="pill p-${k}">${ST[k]}</span><b>…</b></button>`,
    )
    .join("")}</div>
- <div class="card"><input id="sq" placeholder="Caută VIN (parțial)..." value="${esc(stQ)}" style="max-width:300px;margin-bottom:8px"><div class="wrap"><div class="list-scroll"><table><thead><tr><th>Nr. crt.</th><th>VIN</th><th>Model</th><th>Culoare</th><th>Stadiu</th><th>De cât timp</th><th>Operator</th><th>Remedieri</th><th></th></tr></thead><tbody id="tb"></tbody></table></div></div><div class="pg-bar"><button class="btn gh sm" id="pgPrev">‹ Anterior</button><span class="mut" id="pgInfo"></span><button class="btn gh sm" id="pgNext">Următor ›</button></div></div>`;
-        const draw = () => {
-          const q = stQ.toLowerCase();
-          const filtered = all.filter(
-            (p) =>
-              (!stF || p.stadiu === stF) &&
-              (p.vin || "").toLowerCase().includes(q),
-          );
-          const total = filtered.length,
-            pages = Math.max(1, Math.ceil(total / PER_PAGE));
-          if (stPage > pages) stPage = pages;
-          if (stPage < 1) stPage = 1;
-          const start = (stPage - 1) * PER_PAGE,
-            pageItems = filtered.slice(start, start + PER_PAGE);
+ <div class="card"><input id="sq" placeholder="Caută VIN (parțial, minim 3 caractere)..." autocomplete="off" value="${esc(stQ)}" style="max-width:300px;margin-bottom:8px"><div class="wrap"><div class="list-scroll"><table><thead><tr><th>Nr. crt.</th><th>VIN</th><th>Model</th><th>Culoare</th><th>Stadiu</th><th>De cât timp</th><th>Operator</th><th>Remedieri</th><th></th></tr></thead><tbody id="tb"></tbody></table></div></div><div class="pg-bar"><button class="btn gh sm" id="pgPrev">‹ Anterior</button><span class="mut" id="pgInfo"></span><button class="btn gh sm" id="pgNext">Următor ›</button></div></div>`;
+        const now = Date.now();
+        let seq = 0;
+        /* Contoare pe stadii: câte o cerere "head" (fără rânduri), pe coloană indexată */
+        const loadKpis = async () => {
+          const keys = Object.keys(ST),
+            cnt = () =>
+              sb.from("asm_produse").select("id", { count: "exact", head: true }),
+            lateIso = new Date(now - S.prag_alerta_ore * 3600e3).toISOString();
+          const [counts, late] = await Promise.all([
+            Promise.all(keys.map((k) => cnt().eq("stadiu", k))),
+            cnt().eq("stadiu", "in_asamblare").lt("updated_at", lateIso),
+          ]);
+          if (tab !== "stadii") return;
+          keys.forEach((k, i) => {
+            const b = document.querySelector(`#stKpis .kpi[data-s="${k}"] b`);
+            if (b) b.textContent = counts[i].count ?? 0;
+          });
+          const n = late.count || 0,
+            el = $("#stLate");
+          if (el)
+            el.innerHTML = n
+              ? `<div class="al">⚠️ ${n} produse depășesc pragul de timp în asamblare (> ${S.prag_alerta_ore} h).</div>`
+              : "";
+        };
+        /* O pagină de produse: filtrare, căutare și paginare pe server */
+        const loadPage = async () => {
+          const my = ++seq,
+            q = likeSafe(stQ);
+          const build = (page) => {
+            let r = sb.from("asm_produse").select(PL_COLS, { count: "exact" });
+            if (stF) r = r.eq("stadiu", stF);
+            if (q.length >= 3) r = r.ilike("vin", `%${q}%`);
+            return r
+              .order("updated_at", { ascending: false })
+              .order("id")
+              .range((page - 1) * PER_PAGE, page * PER_PAGE - 1);
+          };
+          let res = await build(stPage);
+          if (res.error && stPage > 1) {
+            stPage = 1;
+            res = await build(1);
+          }
+          if (my !== seq || !$("#tb")) return;
+          if (res.error) {
+            $("#tb").innerHTML =
+              '<tr><td colspan="9" class="mut">Eroare la încărcare. Reîncearcă.</td></tr>';
+            return;
+          }
+          const pageItems = res.data || [],
+            total = res.count ?? pageItems.length,
+            pages = Math.max(1, Math.ceil(total / PER_PAGE)),
+            start = (stPage - 1) * PER_PAGE;
+          const idsAvizate = pageItems
+            .filter((p) => p.stadiu === "ctc_avizat")
+            .map((p) => p.id);
+          const avizatDe = {};
+          if (idsAvizate.length) {
+            const { data: ctcEt } = await sb
+              .from("asm_etape")
+              .select("asm_produs_id,user_id,ended_at")
+              .eq("tip", "ctc")
+              .not("ended_at", "is", null)
+              .in("asm_produs_id", idsAvizate)
+              .order("ended_at", { ascending: false });
+            (ctcEt || []).forEach((e) => {
+              if (!(e.asm_produs_id in avizatDe))
+                avizatDe[e.asm_produs_id] = e.user_id;
+            });
+            if (my !== seq || !$("#tb")) return;
+          }
           $("#tb").innerHTML =
             pageItems
               .map(
@@ -2189,30 +2280,41 @@
           $("#pgNext").disabled = stPage >= pages;
           fitListScroll();
         };
-        draw();
         $("#pgPrev").onclick = () => {
           stPage--;
-          draw();
+          loadPage();
         };
         $("#pgNext").onclick = () => {
           stPage++;
-          draw();
+          loadPage();
         };
-        $("#sq").oninput = (e) => {
+        $("#sq").oninput = debounce((e) => {
           stQ = e.target.value;
           stPage = 1;
-          draw();
-        };
+          loadPage();
+        });
+        loadKpis().catch(() => {});
+        await loadPage();
       }
-
+      let indCache = null;
       async function computeIndicatori() {
+        if (indCache && Date.now() - indCache.t < 120e3) return indCache.v;
+        const v = await computeIndicatori0();
+        indCache = { t: Date.now(), v };
+        return v;
+      }
+      async function computeIndicatori0() {
         const de = new Date(Date.now() - 30 * 864e5).toISOString();
-        const { data: et } = await sb
-          .from("asm_etape")
-          .select("asm_produs_id,tip,rezultat,durata_sec,ended_at")
-          .not("ended_at", "is", null)
-          .gte("ended_at", de);
-        const rows = et || [];
+        const { rows } = await fetchAll((a, b) =>
+          sb
+            .from("asm_etape")
+            .select("id,asm_produs_id,tip,rezultat,durata_sec,ended_at")
+            .not("ended_at", "is", null)
+            .gte("ended_at", de)
+            .order("ended_at", { ascending: false })
+            .order("id")
+            .range(a, b),
+        );
         const avg = (arr) =>
           arr.length
             ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length)
@@ -2229,25 +2331,31 @@
         let pctPrima = "—";
         if (ctcOk.length) {
           const ids = [...new Set(ctcOk.map((r) => r.asm_produs_id))];
-          const { data: remAny } = await sb
-            .from("asm_etape")
-            .select("asm_produs_id")
-            .eq("tip", "remediere")
-            .in("asm_produs_id", ids);
-          const cuRemediere = new Set(
-            (remAny || []).map((r) => r.asm_produs_id),
+          const remAny = await inChunks(ids, (ch) =>
+            sb
+              .from("asm_etape")
+              .select("asm_produs_id")
+              .eq("tip", "remediere")
+              .in("asm_produs_id", ch),
           );
+          const cuRemediere = new Set(remAny.map((r) => r.asm_produs_id));
           const primaOk = ctcOk.filter(
             (r) => !cuRemediere.has(r.asm_produs_id),
           ).length;
           pctPrima = Math.round((primaOk / ctcOk.length) * 100) + "%";
         }
-        const { data: nok } = await sb
-          .from("asm_checklist_rezultate")
-          .select("text_criteriu")
-          .eq("rezultat", "nok")
-          .gte("bifat_la", de)
-          .limit(3000);
+        const { rows: nok } = await fetchAll(
+          (a, b) =>
+            sb
+              .from("asm_checklist_rezultate")
+              .select("id,text_criteriu")
+              .eq("rezultat", "nok")
+              .gte("bifat_la", de)
+              .order("bifat_la", { ascending: false })
+              .order("id")
+              .range(a, b),
+          10000,
+        );
         let topCrit = "—";
         if (nok && nok.length) {
           const cnt = {};
@@ -2288,31 +2396,37 @@
         if (tab === "statistici") fitStaListScroll();
       });
 
+      const STA_MAX = 20000;
       async function fetchStatistici() {
-        const { data: et } = await sb
-          .from("asm_etape")
-          .select(
-            "id,asm_produs_id,tip,user_id,rezultat,durata_sec,started_at,ended_at",
-          )
-          .not("ended_at", "is", null)
-          .gte("ended_at", staDe + "T00:00:00")
-          .lte("ended_at", staPana + "T23:59:59")
-          .order("ended_at", { ascending: false })
-          .limit(5000);
-        const rows = et || [];
-        const ids = [...new Set(rows.map((r) => r.asm_produs_id))];
-        let prodMap = {};
-        if (ids.length) {
-          const { data: pr } = await sb
-            .from("asm_produse")
-            .select("id,vin,model,culoare,stadiu")
-            .in("id", ids);
-          (pr || []).forEach((p) => (prodMap[p.id] = p));
+        try {
+          const { rows, truncated } = await fetchAll(
+            (a, b) =>
+              sb
+                .from("asm_etape")
+                .select(
+                  "id,asm_produs_id,tip,user_id,rezultat,durata_sec,started_at,ended_at,asm_produse(vin,model,culoare,stadiu)",
+                )
+                .not("ended_at", "is", null)
+                .gte("ended_at", staDe + "T00:00:00")
+                .lte("ended_at", staPana + "T23:59:59")
+                .order("ended_at", { ascending: false })
+                .order("id")
+                .range(a, b),
+            STA_MAX,
+          );
+          if (truncated)
+            toast(
+              `Perioada are peste ${STA_MAX} înregistrări: se afișează cele mai recente ${STA_MAX}. Restrânge perioada.`,
+              1,
+            );
+          staRows = rows.map(({ asm_produse, ...r }) => ({
+            ...r,
+            produs: asm_produse || {},
+          }));
+        } catch (err) {
+          staRows = [];
+          toast("Statisticile nu au putut fi încărcate. Reîncearcă.", 1);
         }
-        staRows = rows.map((r) => ({
-          ...r,
-          produs: prodMap[r.asm_produs_id] || {},
-        }));
       }
 
       async function vStatistici(c) {
@@ -2472,11 +2586,16 @@
         };
         $("#staExport").onclick = () => exportStatisticiExcel();
         await reload();
-        computeIndicatori().then((x) => {
-          const el = $("#indic");
-          if (el) el.innerHTML = x;
-          fitStaListScroll();
-        });
+        computeIndicatori()
+          .then((x) => {
+            const el = $("#indic");
+            if (el) el.innerHTML = x;
+            fitStaListScroll();
+          })
+          .catch(() => {
+            const el = $("#indic");
+            if (el) el.innerHTML = '<span class="mut">Indicatorii nu au putut fi calculați.</span>';
+          });
       }
 
       async function exportStatisticiExcel() {
